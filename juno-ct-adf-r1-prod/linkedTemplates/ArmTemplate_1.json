@@ -1,0 +1,1672 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "juno-ct-adf-r1-prod"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/dsOpsLcsNotificationAggregateContainer')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_OpsConnector_LCS",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"SourceId": {
+						"type": "string"
+					},
+					"AggregateName": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Download"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@dataset().AggregateName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().SourceId",
+							"type": "Expression"
+						},
+						"container": "ops-lcs-notification-aggregate"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsOpsLocFiles')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_OpsConnector",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Handback"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "TenantId",
+						"type": "varbinary"
+					},
+					{
+						"name": "LocConfigurationId",
+						"type": "varchar"
+					},
+					{
+						"name": "TrackingId",
+						"type": "varchar"
+					},
+					{
+						"name": "Version",
+						"type": "varchar"
+					},
+					{
+						"name": "Locale",
+						"type": "varchar"
+					},
+					{
+						"name": "Revision",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "ContentUrl",
+						"type": "varchar"
+					},
+					{
+						"name": "UpdatedAt",
+						"type": "varchar"
+					},
+					{
+						"name": "TranslationType",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "LocFiles"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsOpsLocFilesContainer')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "junoctopscstr1prod",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"LocConfigurationId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Handback"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"folderPath": {
+							"value": "@dataset().LocConfigurationId",
+							"type": "Expression"
+						},
+						"container": "ops-loc-files"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"TranslationContext": {
+							"type": "object",
+							"properties": {
+								"locConfigurationId": {
+									"type": "string"
+								},
+								"targetLocale": {
+									"type": "string"
+								},
+								"translationId": {
+									"type": "string"
+								},
+								"translationFlavor": {
+									"type": "string"
+								},
+								"translationRevision": {
+									"type": "string"
+								},
+								"$typeId": {
+									"type": "string"
+								}
+							}
+						},
+						"contentUri": {
+							"type": "string"
+						},
+						"fileIdentifier": {
+							"type": "object",
+							"properties": {
+								"locConfigurationId": {
+									"type": "string"
+								},
+								"trackingId": {
+									"type": "string"
+								},
+								"version": {
+									"type": "string"
+								},
+								"locale": {
+									"type": "string"
+								},
+								"contentType": {
+									"type": "object",
+									"properties": {
+										"Name": {
+											"type": "string"
+										},
+										"Id": {
+											"type": "integer"
+										},
+										"$typeId": {
+											"type": "string"
+										}
+									}
+								},
+								"$typeId": {
+									"type": "string"
+								}
+							}
+						},
+						"locConfigurationId": {
+							"type": "string"
+						},
+						"tenantId": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						},
+						"createdAt": {
+							"type": "string"
+						},
+						"createdBy": {
+							"type": "string"
+						},
+						"$typeId": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsOpsSourceFileDownloadedContainer')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_OpsConnector_LCS",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"LocConfigurationId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Download"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"folderPath": {
+							"value": "@dataset().LocConfigurationId",
+							"type": "Expression"
+						},
+						"container": "ops-source-file-downloaded"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsOpsSourceFiles')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_OpsConnector",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Download"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "SourceId",
+						"type": "varchar"
+					},
+					{
+						"name": "FIleId",
+						"type": "varchar"
+					},
+					{
+						"name": "Version",
+						"type": "varchar"
+					},
+					{
+						"name": "Locale",
+						"type": "varchar"
+					},
+					{
+						"name": "IsContentChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsMetadataChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsLocMetadataChanged",
+						"type": "bit"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "SourceFiles"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsOpsSourceStore')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_OpsConnector",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Download"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "SourceId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LocConfigurationId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "SourceRepoUrl",
+						"type": "nvarchar"
+					},
+					{
+						"name": "SourceBranch",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Version",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "IsDeleted",
+						"type": "bit"
+					},
+					{
+						"name": "IsLatest",
+						"type": "bit"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "SourceStoreSnapshot"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsSourceFileContentGroupSummary')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Handoff"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "LocConfigurationId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TrackingId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Version",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Locale",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ContentType",
+						"type": "nvarchar"
+					},
+					{
+						"name": "StateId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "ContentUrl",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FilePath",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LocTopic",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LocPriority",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CommitId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "IsContentChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsLocMetadataChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsSkeletonChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsDeleted",
+						"type": "bit"
+					},
+					{
+						"name": "IsLatest",
+						"type": "bit"
+					},
+					{
+						"name": "ContentGroupName",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "SourceFileContentGroupSummary"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsSourceFileForecasting')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Forecasting",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Forecasting"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "TenantId",
+						"type": "varchar"
+					},
+					{
+						"name": "LocConfigurationId",
+						"type": "varchar"
+					},
+					{
+						"name": "FileTrackingId",
+						"type": "varchar"
+					},
+					{
+						"name": "Version",
+						"type": "varchar"
+					},
+					{
+						"name": "ContentType",
+						"type": "varchar"
+					},
+					{
+						"name": "EstimateWC",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "EstimateAWC",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "EstimateCost",
+						"type": "float",
+						"precision": 15
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "SourceFileForecasting"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsSourceFileHistory')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Handoff"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "LocConfigurationId",
+						"type": "varchar"
+					},
+					{
+						"name": "TenantId",
+						"type": "varchar"
+					},
+					{
+						"name": "TrackingId",
+						"type": "varchar"
+					},
+					{
+						"name": "Version",
+						"type": "varchar"
+					},
+					{
+						"name": "Locale",
+						"type": "varchar"
+					},
+					{
+						"name": "ContentType",
+						"type": "varchar"
+					},
+					{
+						"name": "StateId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "ContentUrl",
+						"type": "varchar"
+					},
+					{
+						"name": "FilePath",
+						"type": "varchar"
+					},
+					{
+						"name": "LocTopic",
+						"type": "varchar"
+					},
+					{
+						"name": "LocPriority",
+						"type": "varchar"
+					},
+					{
+						"name": "CommitId",
+						"type": "varchar"
+					},
+					{
+						"name": "IsContentChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsContentGroupLocMetadataChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsLocMetadataChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsSkeletonChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsDeleted",
+						"type": "bit"
+					},
+					{
+						"name": "IsLatest",
+						"type": "bit"
+					},
+					{
+						"name": "Revision",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "SubStateId",
+						"type": "int",
+						"precision": 10
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "SourceFileHistory"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsSourceFileJobAssignmentBlobContainer')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "junoctfistr1prod",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Handoff"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": "source-file-job-assignment"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsSourceFileSnapshot')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Handoff"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "LocConfigurationId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TrackingId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Version",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Locale",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ContentType",
+						"type": "nvarchar"
+					},
+					{
+						"name": "StateId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "ContentUrl",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FilePath",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LocTopic",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LocPriority",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CommitId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "IsContentChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsLocMetadataChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsSkeletonChanged",
+						"type": "bit"
+					},
+					{
+						"name": "IsDeleted",
+						"type": "bit"
+					},
+					{
+						"name": "IsLatest",
+						"type": "bit"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "SourceFileSnapshot"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsTenant')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_LocConfig",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "LocConfiguration"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Active",
+						"type": "bit"
+					},
+					{
+						"name": "Version",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "TransformerOptionsId",
+						"type": "uniqueidentifier"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Tenant"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsTenantPrice')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Forecasting",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Forecasting"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "TenantId",
+						"type": "varchar"
+					},
+					{
+						"name": "ContentTypeId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "TranslationFlavor",
+						"type": "varchar"
+					},
+					{
+						"name": "Price",
+						"type": "float",
+						"precision": 15
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Prices"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsTranslationOptions')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_LocConfig",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "LocConfiguration"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AssignSourceFileToContentGroup')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lookup ContentGroups",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT [Name], [Query] FROM [dbo].[ContentGroupSnapshot]\nWHERE [LocConfigurationId] = '@{pipeline().parameters.LocConfigurationId}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsContentGroupSnapshot",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach ContentGroup",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lookup ContentGroups",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lookup ContentGroups').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "AssignSourceFileToContentGroup",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[AssignNewSourceFileToContentGroup]",
+										"storedProcedureParameters": {
+											"ContentGroupName": {
+												"value": {
+													"value": "@item().Name",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"LocConfigurationId": {
+												"value": {
+													"value": "@pipeline().parameters.LocConfigurationId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"Query": {
+												"value": {
+													"value": "@item().Query",
+													"type": "Expression"
+												},
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "Content_Handoff",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"LocConfigurationId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "FileIngestion"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-01-12T20:11:10Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MergeLocFiles')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "AggregateLocFiles",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [
+							{
+								"name": "Source",
+								"value": "ops-loc-files/@{pipeline().parameters.LocConfigurationId}/"
+							},
+							{
+								"name": "Destination",
+								"value": "ops-loc-file-aggregate/@{pipeline().parameters.LocConfigurationId}/@{concat(pipeline().parameters.JobId, '.json')}"
+							}
+						],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"wildcardFolderPath": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"wildcardFileName": "*.json",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSettings",
+									"copyBehavior": "MergeFiles"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings",
+									"filePattern": "arrayOfObjects"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "dsOpsLocFilesContainer",
+								"type": "DatasetReference",
+								"parameters": {
+									"LocConfigurationId": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "dsLocFileAggregate",
+								"type": "DatasetReference",
+								"parameters": {
+									"LocConfigurationId": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"JobId": {
+										"value": "@pipeline().parameters.JobId",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"LocConfigurationId": {
+						"type": "string"
+					},
+					"JobId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Handback"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-02-07T01:55:52Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/dsOpsLocFilesContainer')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MergeOpsLcsNotifications')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "MergeLcsNontifications",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"wildcardFolderPath": {
+										"value": "@pipeline().parameters.SourceId",
+										"type": "Expression"
+									},
+									"wildcardFileName": "*",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobStorageWriteSettings",
+									"copyBehavior": "MergeFiles"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings",
+									"filePattern": "arrayOfObjects"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "dsOpsLcsNotification",
+								"type": "DatasetReference",
+								"parameters": {
+									"SourceId": {
+										"value": "@pipeline().parameters.SourceId",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "dsOpsLcsNotificationAggregateContainer",
+								"type": "DatasetReference",
+								"parameters": {
+									"SourceId": {
+										"value": "@pipeline().parameters.SourceId",
+										"type": "Expression"
+									},
+									"AggregateName": {
+										"value": "@pipeline().parameters.AggregateName",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"SourceId": {
+						"type": "string"
+					},
+					"AggregateName": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Download"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-02-18T08:22:15Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/dsOpsLcsNotificationAggregateContainer')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PublishSourceFileReadyForHandoff')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "LookupSourceFiles",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT SFS.*, JA.ContentGroupName, JA.DefaultTreatmentPreference, JA.TenantName As Tenant, JA.HostContentStoreName from JobAssignment JA\nINNER JOIN SourceFileSnapshot SFS on JA.SourceFileId = SFS.Id\nWHERE JA.LocConfigurationId = '@{pipeline().parameters.LocConfigurationId}'\nAND JA.JobId = '@{pipeline().parameters.JobId}'\nORDER BY SFS.TrackingId\nOFFSET @{pipeline().parameters.SourceFileOffset} ROWS\nFETCH NEXT @{pipeline().parameters.SourceFileChunk} ROWS ONLY",
+									"type": "Expression"
+								},
+								"queryTimeout": "00:30:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsJobAssignment",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEachSourceFile",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LookupSourceFiles",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LookupTransformOptions",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupSourceFiles').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "PublishSourceFileReadyForHandoffEvent",
+									"type": "WebActivity",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"url": {
+											"value": "@pipeline().globalParameters.sourceFileReadyForHandoffEventPublisherUrl",
+											"type": "Expression"
+										},
+										"method": "POST",
+										"headers": {},
+										"body": {
+											"value": "{\n  \"LocConfigurationId\": \"@{item().LocConfigurationId}\",\n  \"TrackingId\": \"@{item().TrackingId}\",\n  \"Version\": \"@{item().Version}\",\n  \"Locale\": \"@{item().Locale}\",\n  \"ContentType\": \"@{item().ContentType}\",\n  \"ContentUrl\": \"@{item().ContentUrl}\",\n  \"FilePath\": \"@{item().FilePath}\",\n  \"LocTopic\": \"@{item().LocTopic}\",\n  \"LocPriority\": \"@{item().LocPriority}\",\n  \"CommitId\": \"@{item().CommitId}\",\n  \"IsContentChanged\": @{if(item().IsContentChanged, 'true', 'false')},\n  \"IsLocMetadataChanged\": @{if(item().IsLocMetadataChanged, 'true', 'false')},\n  \"IsSkeletonChanged\": true,\n  \"ContentGroupName\": \"@{item().ContentGroupName}\",\n  \"DefaultTreatmentPreference\": \"@{item().DefaultTreatmentPreference}\",\n  \"Tenant\": \"@{item().Tenant}\",\n  \"TenantId\": \"@{pipeline().parameters.TenantId}\",\n  \"HostContentStoreName\": \"@{item().HostContentStoreName}\"\n}",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "LookupTransformOptions",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select O.* from [dbo].[Branches] B\ninner join [dbo].[Tenant] T on B.TenantId = T.Id\ninner join [dbo].[TransformerOptions] O on T.TransformerOptionsId = O.Id\nwhere B.Guid = '@{pipeline().parameters.LocConfigurationId}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsTenant",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"JobId": {
+						"type": "string"
+					},
+					"LocConfigurationId": {
+						"type": "string"
+					},
+					"SourceFileOffset": {
+						"type": "int"
+					},
+					"SourceFileChunk": {
+						"type": "int"
+					},
+					"TenantId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "FileIngestion"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-01-15T23:54:08Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/dsTenant')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SinkOpsLocFiles')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "SinkOpsLocFiles",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"wildcardFolderPath": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"wildcardFileName": "*.json",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "upsert",
+								"upsertSettings": {
+									"useTempDB": true,
+									"keys": [
+										"TenantId",
+										"LocConfigurationId",
+										"TrackingId",
+										"Version",
+										"Locale",
+										"Revision"
+									]
+								},
+								"sqlWriterUseTableLock": false,
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"path": "$['tenantId']"
+										},
+										"sink": {
+											"name": "TenantId",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['fileIdentifier']['locConfigurationId']"
+										},
+										"sink": {
+											"name": "LocConfigurationId",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['fileIdentifier']['trackingId']"
+										},
+										"sink": {
+											"name": "TrackingId",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['fileIdentifier']['version']"
+										},
+										"sink": {
+											"name": "Version",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['TranslationContext']['targetLocale']"
+										},
+										"sink": {
+											"name": "Locale",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['contentUri']"
+										},
+										"sink": {
+											"name": "ContentUrl",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['fileIdentifier']['contentType']['Name']"
+										},
+										"sink": {
+											"name": "ContentType",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['TranslationContext']['submissionId']"
+										},
+										"sink": {
+											"name": "SubmissionId",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['createdAt']"
+										},
+										"sink": {
+											"name": "UpdatedAt",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['TranslationContext']['translationFlavor']"
+										},
+										"sink": {
+											"name": "TranslationFlavor",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "$['TranslationContext']['translationRevision']"
+										},
+										"sink": {
+											"name": "Revision",
+											"type": "Int32"
+										}
+									}
+								],
+								"collectionReference": ""
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "dsOpsLocFilesContainer",
+								"type": "DatasetReference",
+								"parameters": {
+									"LocConfigurationId": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "dsOpsLocFiles",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"LocConfigurationId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Handback"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-02-06T06:45:36Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/dsOpsLocFilesContainer')]",
+				"[concat(variables('factoryId'), '/datasets/dsOpsLocFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/UpdateJobState')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "UpdateJobSummary",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[UpdateJobSummary]",
+							"storedProcedureParameters": {
+								"jobId": {
+									"value": {
+										"value": "@pipeline().parameters.JobId",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"locConfigurationId": {
+									"value": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "Content_Handoff",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "LookupJobState",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "UpdateJobSummary",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT JH.*, JS.Name as State From [JobHistory] JH\nLEFT JOIN [JobState] JS on JH.StateId = JS.Id\nWHERE JH.LocConfigurationId = '@{pipeline().parameters.LocConfigurationId}'\nAND JH.JobId = '@{pipeline().parameters.JobId}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsJobHistory",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "PublishJobStateChangedEvent",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "LookupJobState",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "@pipeline().globalParameters.updateJobStateEventPublisherUrl",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {},
+							"body": {
+								"value": "@activity('LookupJobState').output.firstRow",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"LocConfigurationId": {
+						"type": "string"
+					},
+					"JobId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "FileIngestion"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-01-12T20:11:10Z"
+			},
+			"dependsOn": []
+		}
+	]
+}

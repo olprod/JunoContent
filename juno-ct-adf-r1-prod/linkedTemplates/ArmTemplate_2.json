@@ -1,0 +1,2585 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "juno-ct-adf-r1-prod"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/dfAggregateJobEstimatedAWC')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "Handoff"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "dsJobAssignment",
+								"type": "DatasetReference"
+							},
+							"name": "JobAssignment"
+						},
+						{
+							"dataset": {
+								"referenceName": "dsSourceFileForecasting",
+								"type": "DatasetReference"
+							},
+							"name": "SourceFileWC"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "dsHandoffJobForecasting",
+								"type": "DatasetReference"
+							},
+							"name": "SinkToJobForecasting"
+						}
+					],
+					"transformations": [
+						{
+							"name": "JoinSourceFileForecasting"
+						},
+						{
+							"name": "AggregateAWC"
+						},
+						{
+							"name": "AlterPolicy"
+						},
+						{
+							"name": "NormalizeEstimatedAWC"
+						}
+					],
+					"script": "parameters{\n\tTenantId as string,\n\tLocConfigurationId as string,\n\tJobId as string\n}\nsource(output(\n\t\tSourceFileId as integer,\n\t\tLocConfigurationId as string,\n\t\tTenantId as string,\n\t\tFileTrackingId as string,\n\t\tVersion as string,\n\t\tJobId as string,\n\t\tTenantName as string,\n\t\tHostContentStoreName as string,\n\t\tContentGroupName as string,\n\t\tDefaultTreatmentPreference as string,\n\t\tTimestamp as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: (\"select * from JobAssignment where LocConfigurationId = '{$LocConfigurationId}' and JobId = '{$JobId}'\"),\n\tformat: 'query') ~> JobAssignment\nsource(output(\n\t\tId as integer,\n\t\tTenantId as string,\n\t\tLocConfigurationId as string,\n\t\tFileTrackingId as string,\n\t\tVersion as string,\n\t\tContentType as string,\n\t\tEstimateWC as integer,\n\t\tEstimateAWC as double,\n\t\tEstimateCost as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: (\"select * from SourceFileForecasting where LocConfigurationId = '{$LocConfigurationId}'\"),\n\tformat: 'query') ~> SourceFileWC\nJobAssignment, SourceFileWC join(JobAssignment@LocConfigurationId == SourceFileWC@LocConfigurationId\n\t&& JobAssignment@TenantId == SourceFileWC@TenantId\n\t&& JobAssignment@FileTrackingId == SourceFileWC@FileTrackingId\n\t&& JobAssignment@Version == SourceFileWC@Version,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> JoinSourceFileForecasting\nNormalizeEstimatedAWC aggregate(groupBy(JobAssignment@TenantId,\n\t\tJobAssignment@LocConfigurationId,\n\t\tJobId),\n\tTotalEstimatedAWC = sum(NormalizedEstimatedAWC)) ~> AggregateAWC\nAggregateAWC alterRow(upsertIf(true())) ~> AlterPolicy\nJoinSourceFileForecasting derive(NormalizedEstimatedAWC = iifNull(EstimateAWC, 0)) ~> NormalizeEstimatedAWC\nAlterPolicy sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tTenantId as string,\n\t\tLocConfigurationId as string,\n\t\tJobId as string,\n\t\tEstimatedWC as integer,\n\t\tEstimatedAWC as double,\n\t\tPrice as double,\n\t\tHTLocalesCount as integer,\n\t\tEstimatedCost as string,\n\t\tRunningBudget as double,\n\t\tIsOverBudget as boolean\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:true,\n\tupsertable:true,\n\tkeys:['TenantId','LocConfigurationId','JobId'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tTenantId,\n\t\tLocConfigurationId,\n\t\tJobId,\n\t\tEstimatedAWC = TotalEstimatedAWC\n\t)) ~> SinkToJobForecasting"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dfAssignSourceFileToJob')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "Handoff"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "dsSourceFileContentGroupSummary",
+								"type": "DatasetReference"
+							},
+							"name": "SourceFile"
+						},
+						{
+							"dataset": {
+								"referenceName": "dsContentGroupSnapshot",
+								"type": "DatasetReference"
+							},
+							"name": "ContentGroup"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "dsJobAssignment",
+								"type": "DatasetReference"
+							},
+							"name": "SinkToJobAssignment"
+						},
+						{
+							"dataset": {
+								"referenceName": "dsSourceFileHistory",
+								"type": "DatasetReference"
+							},
+							"name": "SinkToSourceFileHistory"
+						}
+					],
+					"transformations": [
+						{
+							"name": "JoinContentGroup"
+						},
+						{
+							"name": "SelectJobAssignmentColumns"
+						},
+						{
+							"name": "DerivedJobId"
+						},
+						{
+							"name": "AlterRow"
+						},
+						{
+							"name": "SelectStateColumns"
+						},
+						{
+							"name": "DerivedStateId"
+						},
+						{
+							"name": "AlterRow1"
+						}
+					],
+					"script": "parameters{\n\tLocConfigurationId as string,\n\tJobId as string,\n\tTenantName as string,\n\tHostContentStoreName as string,\n\tTenantId as string\n}\nsource(output(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tTenantId as string,\n\t\tTrackingId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tContentType as string,\n\t\tStateId as integer,\n\t\tContentUrl as string,\n\t\tFilePath as string,\n\t\tLocTopic as string,\n\t\tLocPriority as string,\n\t\tCommitId as string,\n\t\tIsContentChanged as boolean,\n\t\tIsContentGroupLocMetadataChanged as boolean,\n\t\tIsLocMetadataChanged as boolean,\n\t\tIsSkeletonChanged as boolean,\n\t\tIsDeleted as boolean,\n\t\tIsLatest as boolean,\n\t\tRevision as integer,\n\t\tSubStateId as integer,\n\t\tContentGroupName as string\n\t),\n\tallowSchemaDrift: false,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: (\"select * from SourceFileContentGroupSummary where LocConfigurationId = '{$LocConfigurationId}' and StateId in (1, 6) and ContentGroupName IS NOT NULL\"),\n\tformat: 'query') ~> SourceFile\nsource(output(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tName as string,\n\t\tDefaultTreatmentPreference as string,\n\t\tQuery as string,\n\t\tVersion as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: (\"select * from ContentGroupSnapshot where LocConfigurationId = '{$LocConfigurationId}'\"),\n\tformat: 'query') ~> ContentGroup\nSourceFile, ContentGroup join(SourceFile@LocConfigurationId == ContentGroup@LocConfigurationId\n\t&& ContentGroupName == Name,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> JoinContentGroup\nJoinContentGroup select(mapColumn(\n\t\tSourceFileId = SourceFile@Id,\n\t\tLocConfigurationId = SourceFile@LocConfigurationId,\n\t\tTenantId,\n\t\tFileTrackingId = TrackingId,\n\t\tVersion = SourceFile@Version,\n\t\tContentGroupName,\n\t\tDefaultTreatmentPreference\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectJobAssignmentColumns\nSelectJobAssignmentColumns derive(JobId = $JobId,\n\t\tTenantName = $TenantName,\n\t\tHostContentStoreName = $HostContentStoreName,\n\t\tTimestamp = currentUTC(),\n\t\tTenantId = $TenantId) ~> DerivedJobId\nDerivedJobId alterRow(upsertIf(true())) ~> AlterRow\nJoinContentGroup select(mapColumn(\n\t\tLocConfigurationId = SourceFile@LocConfigurationId,\n\t\tTrackingId,\n\t\tVersion = SourceFile@Version,\n\t\tStateId\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectStateColumns\nSelectStateColumns derive(StateId = 2) ~> DerivedStateId\nDerivedStateId alterRow(upsertIf(true())) ~> AlterRow1\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tSourceFileId as integer,\n\t\tLocConfigurationId as string,\n\t\tFileTrackingId as string,\n\t\tVersion as string,\n\t\tJobId as string,\n\t\tTenantName as string,\n\t\tHostContentStoreName as string,\n\t\tContentGroupName as string,\n\t\tDefaultTreatmentPreference as string,\n\t\tTimestamp as timestamp\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','FileTrackingId','Version','JobId'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> SinkToJobAssignment\nAlterRow1 sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tTenantId as string,\n\t\tTrackingId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tContentType as string,\n\t\tStateId as integer,\n\t\tContentUrl as string,\n\t\tFilePath as string,\n\t\tLocTopic as string,\n\t\tLocPriority as string,\n\t\tCommitId as string,\n\t\tIsContentChanged as boolean,\n\t\tIsContentGroupLocMetadataChanged as boolean,\n\t\tIsLocMetadataChanged as boolean,\n\t\tIsSkeletonChanged as boolean,\n\t\tIsDeleted as boolean,\n\t\tIsLatest as boolean,\n\t\tRevision as integer,\n\t\tSubStateId as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','TrackingId','Version'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tLocConfigurationId,\n\t\tTrackingId,\n\t\tVersion,\n\t\tStateId\n\t)) ~> SinkToSourceFileHistory"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dfAssignSourceFileToJob_New')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "Handoff"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "dsSourceFileContentGroupSummary",
+								"type": "DatasetReference"
+							},
+							"name": "SourceFile"
+						},
+						{
+							"dataset": {
+								"referenceName": "dsContentGroupSnapshot",
+								"type": "DatasetReference"
+							},
+							"name": "ContentGroup"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "dsJobAssignment",
+								"type": "DatasetReference"
+							},
+							"name": "SinkToJobAssignment"
+						},
+						{
+							"dataset": {
+								"referenceName": "dsSourceFileHistory",
+								"type": "DatasetReference"
+							},
+							"name": "SinkToSourceFileHistory"
+						},
+						{
+							"dataset": {
+								"referenceName": "dsSourceFileJobAssignmentBlobContainer",
+								"type": "DatasetReference"
+							},
+							"name": "SinkToJobAssignmentBlob"
+						}
+					],
+					"transformations": [
+						{
+							"name": "JoinContentGroup"
+						},
+						{
+							"name": "SelectJobAssignmentColumns"
+						},
+						{
+							"name": "DerivedJobId"
+						},
+						{
+							"name": "AlterRow"
+						},
+						{
+							"name": "SelectStateColumns"
+						},
+						{
+							"name": "DerivedStateId"
+						},
+						{
+							"name": "AlterRow1"
+						},
+						{
+							"name": "SelectColumns"
+						},
+						{
+							"name": "derivedTenantId"
+						}
+					],
+					"script": "parameters{\n\tLocConfigurationId as string,\n\tJobId as string,\n\tTenantName as string,\n\tHostContentStoreName as string,\n\tTenantId as string\n}\nsource(output(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tTenantId as string,\n\t\tTrackingId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tContentType as string,\n\t\tStateId as integer,\n\t\tContentUrl as string,\n\t\tFilePath as string,\n\t\tLocTopic as string,\n\t\tLocPriority as string,\n\t\tCommitId as string,\n\t\tIsContentChanged as boolean,\n\t\tIsContentGroupLocMetadataChanged as boolean,\n\t\tIsLocMetadataChanged as boolean,\n\t\tIsSkeletonChanged as boolean,\n\t\tIsDeleted as boolean,\n\t\tIsLatest as boolean,\n\t\tRevision as integer,\n\t\tSubStateId as integer,\n\t\tContentGroupName as string\n\t),\n\tallowSchemaDrift: false,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: (\"select * from SourceFileContentGroupSummary where LocConfigurationId = '{$LocConfigurationId}' and StateId in (1, 2, 6) and ContentGroupName IS NOT NULL\"),\n\tformat: 'query') ~> SourceFile\nsource(output(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tName as string,\n\t\tDefaultTreatmentPreference as string,\n\t\tQuery as string,\n\t\tVersion as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: (\"select * from ContentGroupSnapshot where LocConfigurationId = '{$LocConfigurationId}'\"),\n\tformat: 'query') ~> ContentGroup\nSourceFile, ContentGroup join(SourceFile@LocConfigurationId == ContentGroup@LocConfigurationId\n\t&& ContentGroupName == Name,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> JoinContentGroup\nJoinContentGroup select(mapColumn(\n\t\tSourceFileId = SourceFile@Id,\n\t\tLocConfigurationId = SourceFile@LocConfigurationId,\n\t\tTenantId,\n\t\tFileTrackingId = TrackingId,\n\t\tVersion = SourceFile@Version,\n\t\tContentGroupName,\n\t\tDefaultTreatmentPreference\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectJobAssignmentColumns\nSelectJobAssignmentColumns derive(JobId = $JobId,\n\t\tTenantName = $TenantName,\n\t\tHostContentStoreName = $HostContentStoreName,\n\t\tTimestamp = currentUTC(),\n\t\tTenantId = $TenantId) ~> DerivedJobId\nDerivedJobId alterRow(upsertIf(true())) ~> AlterRow\nJoinContentGroup select(mapColumn(\n\t\tLocConfigurationId = SourceFile@LocConfigurationId,\n\t\tTrackingId,\n\t\tVersion = SourceFile@Version,\n\t\tStateId\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectStateColumns\nSelectStateColumns derive(StateId = 2) ~> DerivedStateId\nDerivedStateId alterRow(upsertIf(true())) ~> AlterRow1\nderivedTenantId select(mapColumn(\n\t\tLocConfigurationId = SourceFile@LocConfigurationId,\n\t\tTenantId,\n\t\tTrackingId,\n\t\tVersion = SourceFile@Version,\n\t\tLocale,\n\t\tContentType,\n\t\tContentUrl,\n\t\tFilePath,\n\t\tLocTopic,\n\t\tLocPriority,\n\t\tCommitId,\n\t\tIsContentChanged,\n\t\tIsLocMetadataChanged,\n\t\tIsSkeletonChanged,\n\t\tRevision,\n\t\tContentGroupName,\n\t\tDefaultTreatmentPreference,\n\t\tIsContentGroupLocMetadataChanged\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectColumns\nJoinContentGroup derive(TenantId = $TenantId) ~> derivedTenantId\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tSourceFileId as integer,\n\t\tLocConfigurationId as string,\n\t\tFileTrackingId as string,\n\t\tVersion as string,\n\t\tJobId as string,\n\t\tTenantName as string,\n\t\tHostContentStoreName as string,\n\t\tContentGroupName as string,\n\t\tDefaultTreatmentPreference as string,\n\t\tTimestamp as timestamp\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','FileTrackingId','Version','JobId'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> SinkToJobAssignment\nAlterRow1 sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tTenantId as string,\n\t\tTrackingId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tContentType as string,\n\t\tStateId as integer,\n\t\tContentUrl as string,\n\t\tFilePath as string,\n\t\tLocTopic as string,\n\t\tLocPriority as string,\n\t\tCommitId as string,\n\t\tIsContentChanged as boolean,\n\t\tIsContentGroupLocMetadataChanged as boolean,\n\t\tIsLocMetadataChanged as boolean,\n\t\tIsSkeletonChanged as boolean,\n\t\tIsDeleted as boolean,\n\t\tIsLatest as boolean,\n\t\tRevision as integer,\n\t\tSubStateId as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','TrackingId','Version'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tLocConfigurationId,\n\t\tTrackingId,\n\t\tVersion,\n\t\tStateId\n\t)) ~> SinkToSourceFileHistory\nSelectColumns sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tpartitionFileNames:[(concat($JobId, '.json'))],\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\tpartitionBy('hash', 1)) ~> SinkToJobAssignmentBlob"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dfAssignSourceFiles')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContentGroup/Assignment"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "dsSourceFileSnapshot",
+								"type": "DatasetReference"
+							},
+							"name": "SourceFileSnapshot"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "dsContentGroupAssignmentHistory",
+								"type": "DatasetReference"
+							},
+							"name": "SinkNewAssignment"
+						}
+					],
+					"transformations": [
+						{
+							"name": "SelectSourceFileTrackingId"
+						},
+						{
+							"name": "AssignToContentGroup"
+						},
+						{
+							"name": "AlterRow"
+						},
+						{
+							"name": "FilterByQueryString"
+						}
+					],
+					"script": "parameters{\n\tQueryString as string (\"true()\"),\n\tContentGroupName as string,\n\tLocConfigurationId as string\n}\nsource(output(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tTrackingId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tContentType as string,\n\t\tStateId as integer,\n\t\tContentUrl as string,\n\t\tFilePath as string,\n\t\tLocTopic as string,\n\t\tLocPriority as string,\n\t\tCommitId as string,\n\t\tIsContentChanged as boolean,\n\t\tIsLocMetadataChanged as boolean,\n\t\tIsSkeletonChanged as boolean,\n\t\tIsDeleted as boolean,\n\t\tIsLatest as boolean\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> SourceFileSnapshot\nFilterByQueryString select(mapColumn(\n\t\tLocConfigurationId,\n\t\tFileTrackingId = TrackingId\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectSourceFileTrackingId\nSelectSourceFileTrackingId derive(ContentGroupName = $ContentGroupName,\n\t\tVersion = currentUTC(),\n\t\tIsDeleted = 0) ~> AssignToContentGroup\nAssignToContentGroup alterRow(upsertIf(true())) ~> AlterRow\nSourceFileSnapshot filter(LocConfigurationId == $LocConfigurationId) ~> FilterByQueryString\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tLocConfigurationId as string,\n\t\tFileTrackingId as string,\n\t\tContentGroupName as string,\n\t\tVersion as timestamp,\n\t\tIsDeleted as boolean\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:true,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','FileTrackingId'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> SinkNewAssignment"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dfSinkOpsLcsNotifications')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "Download"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "dsOpsLcsNotification",
+								"type": "DatasetReference"
+							},
+							"name": "OpsLcsNotification"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "dsOpsSourceFiles",
+								"type": "DatasetReference"
+							},
+							"name": "SinkToSourceFiles"
+						}
+					],
+					"transformations": [
+						{
+							"name": "Flatten"
+						},
+						{
+							"name": "AlterRow"
+						},
+						{
+							"name": "AddLocConfigurationId"
+						}
+					],
+					"script": "parameters{\n\tSourceId as string,\n\tLocConfigurationId as string\n}\nsource(output(\n\t\tevent_type as string,\n\t\tevent_time as string,\n\t\tevent_creator as string,\n\t\tfiles as (file_id as string, version as string, locale as string, source_id as string, type as string, status as string, is_content_changed as boolean, is_skeleton_changed as boolean, is_metadata_changed as boolean, is_loc_metadata_changed as boolean, is_reference_to_changed as boolean)[],\n\t\tEventProcessedUtcTime as string,\n\t\tPartitionId as integer,\n\t\tEventEnqueuedUtcTime as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tdocumentForm: 'documentPerLine',\n\twildcardPaths:[($SourceId)]) ~> OpsLcsNotification\nOpsLcsNotification foldDown(unroll(files, files),\n\tmapColumn(\n\t\tFileId = files.file_id,\n\t\tSourceId = files.source_id,\n\t\tVersion = files.version,\n\t\tLocale = files.locale,\n\t\tStatus = files.status,\n\t\tIsContentChanged = files.is_content_changed,\n\t\tIsMetadataChanged = files.is_metadata_changed,\n\t\tIsLocMetadataChanged = files.is_loc_metadata_changed,\n\t\tIsReferenceToChanged = files.is_reference_to_changed\n\t),\n\tskipDuplicateMapInputs: false,\n\tskipDuplicateMapOutputs: false) ~> Flatten\nAddLocConfigurationId alterRow(upsertIf(true())) ~> AlterRow\nFlatten derive(LocConfigurationId = $LocConfigurationId) ~> AddLocConfigurationId\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tSourceId as string,\n\t\tFIleId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tIsContentChanged as boolean,\n\t\tIsMetadataChanged as boolean,\n\t\tIsLocMetadataChanged as boolean\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['SourceId','FileId','Version'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> SinkToSourceFiles"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dfSinkOpsSourceFileDownloaded')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "Download"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "dsOpsSourceFileDownloadedContainer",
+								"type": "DatasetReference"
+							},
+							"name": "OpsSourceFileDownloaded"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "dsSourceFileHistory",
+								"type": "DatasetReference"
+							},
+							"name": "SinkSourceFileHistory"
+						}
+					],
+					"transformations": [
+						{
+							"name": "AlterRow"
+						},
+						{
+							"name": "DerivedColumns"
+						},
+						{
+							"name": "filter"
+						}
+					],
+					"script": "parameters{\n\tLocConfigurationId as string\n}\nsource(output(\n\t\t{$typeId} as string,\n\t\tContentType as string,\n\t\tcontentUri as string,\n\t\tcreatedAt as string,\n\t\tcreatedBy as string,\n\t\tfileIdentifier as ({$typeId} as string, contentType as ({$typeId} as string, Id as boolean, Name as string), locConfigurationId as string, locale as string, trackingId as string, version as string),\n\t\tid as string,\n\t\tlocConfigurationId as string,\n\t\tlocMetadata as ({$typeId} as string, locPriority as string, locTopic as string),\n\t\tmetadata as ({$typeId} as string, changeOrigin as string, filePath as string),\n\t\tsourceUpdate as ({$typeId} as string, isContentChanged as boolean, isLocMetadataChanged as boolean),\n\t\ttenantId as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: true,\n\tpurgeFiles: true,\n\tdocumentForm: 'documentPerLine',\n\twildcardPaths:[(concat($LocConfigurationId, '/**/*.json'))]) ~> OpsSourceFileDownloaded\nDerivedColumns alterRow(upsertIf(true())) ~> AlterRow\nfilter derive(StateId = 1,\n\t\tIsDeleted = 0,\n\t\tIsLatest = 1) ~> DerivedColumns\nOpsSourceFileDownloaded filter(!isNull(locConfigurationId)) ~> filter\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tTenantId as string,\n\t\tTrackingId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tContentType as string,\n\t\tStateId as integer,\n\t\tContentUrl as string,\n\t\tFilePath as string,\n\t\tLocTopic as string,\n\t\tLocPriority as string,\n\t\tCommitId as string,\n\t\tIsContentChanged as boolean,\n\t\tIsContentGroupLocMetadataChanged as boolean,\n\t\tIsLocMetadataChanged as boolean,\n\t\tIsSkeletonChanged as boolean,\n\t\tIsDeleted as boolean,\n\t\tIsLatest as boolean,\n\t\tRevision as integer,\n\t\tSubStateId as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','TrackingId','Version'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tLocConfigurationId = fileIdentifier.locConfigurationId,\n\t\tTrackingId = fileIdentifier.trackingId,\n\t\tVersion = fileIdentifier.version,\n\t\tLocale = fileIdentifier.locale,\n\t\tContentType = fileIdentifier.contentType.Name,\n\t\tStateId,\n\t\tContentUrl = contentUri,\n\t\tFilePath = metadata.filePath,\n\t\tLocTopic = locMetadata.locTopic,\n\t\tLocPriority = locMetadata.locPriority,\n\t\tCommitId = metadata.changeOrigin,\n\t\tIsContentChanged = sourceUpdate.isContentChanged,\n\t\tIsLocMetadataChanged = sourceUpdate.isLocMetadataChanged,\n\t\tIsDeleted,\n\t\tIsLatest,\n\t\tTenantId = tenantId\n\t)) ~> SinkSourceFileHistory"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dfUnAssignSourceFiles')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContentGroup/Assignment"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "dsContentGroupAssignmentHistory",
+								"type": "DatasetReference"
+							},
+							"name": "AssignmentHistory"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "dsContentGroupAssignmentHistory",
+								"type": "DatasetReference"
+							},
+							"name": "SinkDeletedAssignment"
+						}
+					],
+					"transformations": [
+						{
+							"name": "FilterByName"
+						},
+						{
+							"name": "SetDeletedFlag"
+						},
+						{
+							"name": "AlterRow"
+						}
+					],
+					"script": "parameters{\n\tContentGroupName as string,\n\tLocConfigurationId as string\n}\nsource(output(\n\t\tLocConfigurationId as string,\n\t\tFileTrackingId as string,\n\t\tContentGroupName as string,\n\t\tVersion as timestamp,\n\t\tIsDeleted as boolean\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> AssignmentHistory\nAssignmentHistory filter(equals(LocConfigurationId, $LocConfigurationId) && equals(ContentGroupName, $ContentGroupName) && !IsDeleted) ~> FilterByName\nFilterByName derive(IsDeleted = 1) ~> SetDeletedFlag\nSetDeletedFlag alterRow(upsertIf(true())) ~> AlterRow\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tLocConfigurationId as string,\n\t\tFileTrackingId as string,\n\t\tContentGroupName as string,\n\t\tVersion as timestamp,\n\t\tIsDeleted as boolean\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','FileTrackingId'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> SinkDeletedAssignment"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AssignSourceFileToJob_New')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "AssignSourceFileToJob_New",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "LookupTenant",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LookupHostContentStoreName",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "RefreshContentGroupAssignment",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dfAssignSourceFileToJob_New",
+								"type": "DataFlowReference",
+								"parameters": {
+									"LocConfigurationId": {
+										"value": "'@{pipeline().parameters.LocConfigurationId}'",
+										"type": "Expression"
+									},
+									"JobId": {
+										"value": "'@{pipeline().parameters.JobId}'",
+										"type": "Expression"
+									},
+									"TenantName": {
+										"value": "'@{activity('LookupTenant').output.firstRow.Name}'",
+										"type": "Expression"
+									},
+									"HostContentStoreName": {
+										"value": "'@{activity('LookupHostContentStoreName').output.firstRow.Name}'",
+										"type": "Expression"
+									},
+									"TenantId": {
+										"value": "'@{activity('LookupTenant').output.firstRow.Id}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"SourceFile": {},
+									"ContentGroup": {},
+									"SinkToJobAssignment": {},
+									"SinkToSourceFileHistory": {},
+									"SinkToJobAssignmentBlob": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "LookupTenant",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select T.Name, T.Id from [dbo].[Branches] B\nleft join [dbo].[Tenant] T on B.TenantId = T.Id\nwhere B.Guid = '@{pipeline().parameters.LocConfigurationId}'\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsTenant",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "LookupHostContentStoreName",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select HCS.Name from [dbo].[Branches] as B\nleft join [dbo].[HostContentStore] as HCS on B.HostContentStoreId = HCS.Id and B.TenantId = HCS.TenantId\nwhere Guid = '@{pipeline().parameters.LocConfigurationId}'\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsHostContentStore",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Continue Handoff if Within Budget",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "AssignSourceFileToJob_New",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@bool(1)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "UpdateJobSummary",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "SetJobStateToCancelledByForecasting",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "UpdateJobState",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"LocConfigurationId": {
+												"value": "@pipeline().parameters.LocConfigurationId",
+												"type": "Expression"
+											},
+											"JobId": {
+												"value": "@pipeline().parameters.JobId",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "SetJobStateToCancelledByForecasting",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[UpdateJobState]",
+										"storedProcedureParameters": {
+											"jobId": {
+												"value": {
+													"value": "@pipeline().parameters.JobId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"locConfigurationId": {
+												"value": {
+													"value": "@pipeline().parameters.LocConfigurationId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"stateName": {
+												"value": {
+													"value": "CancelledByForecasting",
+													"type": "Expression"
+												},
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "Content_Handoff",
+										"type": "LinkedServiceReference"
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "UpdateJobStateSummary",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "UpdateJobStateToInProgress",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "UpdateJobState",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"LocConfigurationId": {
+												"value": "@pipeline().parameters.LocConfigurationId",
+												"type": "Expression"
+											},
+											"JobId": {
+												"value": "@pipeline().parameters.JobId",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "UpdateJobStateToInProgress",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[UpdateJobState]",
+										"storedProcedureParameters": {
+											"jobId": {
+												"value": {
+													"value": "@pipeline().parameters.JobId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"locConfigurationId": {
+												"value": {
+													"value": "@pipeline().parameters.LocConfigurationId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"stateName": {
+												"value": "InProgress",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "Content_Handoff",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "PublishSourceFileJobAssignmentBlob",
+									"type": "WebActivity",
+									"dependsOn": [
+										{
+											"activity": "UpdateJobStateSummary",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"url": "https://test",
+										"method": "POST",
+										"headers": {},
+										"body": {
+											"value": "{\n\"LocConfigurationId\": \"@{pipeline().parameters.LocConfigurationId}\",\n\"JobId\": \"@{pipeline().parameters.JobId}\",\n\"JobAssignmentBlobName\": \"@{pipeline().parameters.LocConfigurationId}\\{pipeline().parameters.JobId}\"\n}",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "RefreshContentGroupAssignment",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[BulkUpdateContentGroupAssignments]",
+							"storedProcedureParameters": {
+								"LocConfigurationId": {
+									"value": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "Content_Handoff",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"JobId": {
+						"type": "string"
+					},
+					"LocConfigurationId": {
+						"type": "string"
+					},
+					"IterationChunk": {
+						"type": "int",
+						"defaultValue": 2500
+					},
+					"EnableBudgetControl": {
+						"type": "bool",
+						"defaultValue": false
+					}
+				},
+				"variables": {
+					"IterationCount": {
+						"type": "String"
+					},
+					"IterationIndex": {
+						"type": "String",
+						"defaultValue": "0"
+					},
+					"JobSourceFileCount": {
+						"type": "String"
+					},
+					"TempIterationIndex": {
+						"type": "String"
+					},
+					"ContinueIteration": {
+						"type": "Boolean"
+					}
+				},
+				"folder": {
+					"name": "FileIngestion"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-03-29T03:38:32Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dfAssignSourceFileToJob_New')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AssignSourceFilesToContentGroup')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "dsAssignSourceFiles",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "dfUnAssignSourceFiles",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dfAssignSourceFiles",
+								"type": "DataFlowReference",
+								"parameters": {
+									"QueryString": {
+										"value": "'@{''}'",
+										"type": "Expression"
+									},
+									"ContentGroupName": {
+										"value": "'@{pipeline().parameters.ContentGroupName}'",
+										"type": "Expression"
+									},
+									"LocConfigurationId": {
+										"value": "'@{pipeline().parameters.LocConfigurationId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"SourceFileSnapshot": {},
+									"SinkNewAssignment": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "dfUnAssignSourceFiles",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dfUnAssignSourceFiles",
+								"type": "DataFlowReference",
+								"parameters": {
+									"ContentGroupName": {
+										"value": "'@{pipeline().parameters.ContentGroupName}'",
+										"type": "Expression"
+									},
+									"LocConfigurationId": {
+										"value": "'@{pipeline().parameters.LocConfigurationId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"AssignmentHistory": {},
+									"SinkDeletedAssignment": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"ContentGroupName": {
+						"type": "string"
+					},
+					"QueryString": {
+						"type": "string"
+					},
+					"LocConfigurationId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "ContentGroup"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-01-12T20:11:12Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dfAssignSourceFiles')]",
+				"[concat(variables('factoryId'), '/dataflows/dfUnAssignSourceFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EstimateJobCost')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "LookupJobEstimatedWC",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "AggregateJobEstimatedAWC",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "DECLARE @@EstimatedAWC float\nselect @@EstimatedAWC = EstimatedAWC FROM [HandoffJobForecasting] WHERE TenantId='@{pipeline().parameters.TenantId}' AND LocConfigurationId='@{pipeline().parameters.LocConfigurationId}' AND JobId='@{pipeline().parameters.JobId}'\nselect EstimatedAWC = iif(@@EstimatedAWC is null, 0, @@EstimatedAWC) ",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsHandoffJobForecasting",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "AggregateJobEstimatedAWC",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dfAggregateJobEstimatedAWC",
+								"type": "DataFlowReference",
+								"parameters": {
+									"TenantId": {
+										"value": "'@{pipeline().parameters.TenantId}'",
+										"type": "Expression"
+									},
+									"LocConfigurationId": {
+										"value": "'@{pipeline().parameters.LocConfigurationId}'",
+										"type": "Expression"
+									},
+									"JobId": {
+										"value": "'@{pipeline().parameters.JobId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"JobAssignment": {},
+									"SourceFileWC": {},
+									"SinkToJobForecasting": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "Set WordHTLocaleCount",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup WordHTLocaleCount",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "ImageHTLocaleCount",
+							"value": {
+								"value": "@string(activity('Lookup WordHTLocaleCount').output.firstrow.NumberOfLocales)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "EstimateJobCost",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Set WordHTLocaleCount",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LookupJobEstimatedWC",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[estimate_jobCost]",
+							"storedProcedureParameters": {
+								"AdjustedWordCount": {
+									"value": {
+										"value": "@activity('LookupJobEstimatedWC').output.firstRow.EstimatedAWC",
+										"type": "Expression"
+									},
+									"type": "Int32"
+								},
+								"ImageCount": {
+									"value": "0",
+									"type": "Int32"
+								},
+								"ImageLocaleCount": {
+									"value": "0",
+									"type": "Int32"
+								},
+								"JobId": {
+									"value": {
+										"value": "@pipeline().parameters.JobId",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"LocConfigurationId": {
+									"value": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"TenantId": {
+									"value": {
+										"value": "@pipeline().parameters.TenantId",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"WordLocaleCount": {
+									"value": {
+										"value": "@int(variables('WordHTLocaleCount'))",
+										"type": "Expression"
+									},
+									"type": "Int32"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "Content_Forecasting",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "LookupJobEstimatedCost",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "EstimateJobCost",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT EstimatedCost FROM [HandoffJobForecasting] WHERE TenantId ='@{pipeline().parameters.TenantId}' AND LocConfigurationId = '@{pipeline().parameters.LocConfigurationId}' AND JobId ='@{pipeline().parameters.JobId}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsHandoffJobForecasting",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "IsWithinBudget",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "LookupJobEstimatedCost",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"url": {
+								"value": "@pipeline().globalParameters.financeForecastingApiUrl",
+								"type": "Expression"
+							},
+							"method": "POST",
+							"headers": {},
+							"body": {
+								"value": "@json(concat('{\"TenantId\":\"',pipeline().parameters.TenantId,'\",\"Amount\":\"',activity('LookupJobEstimatedCost').output.firstRow.EstimatedCost,'\"}'))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "If WithinBudget Set Variable",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "IsWithinBudget",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@activity('IsWithinBudget').output.canWithdraw",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Set IsOverBudgetTrue",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "IsOverBudget",
+										"value": "1"
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Set IsOverBudgetFalse",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "IsOverBudget",
+										"value": "0"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Update IsOverBudget",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "If WithinBudget Set Variable",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[update_IsOverBudget]",
+							"storedProcedureParameters": {
+								"isOverBudget": {
+									"value": {
+										"value": "@variables('IsOverBudget')",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"jobId": {
+									"value": {
+										"value": "@pipeline().parameters.JobId",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"locConfigurationId": {
+									"value": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"tenantId": {
+									"value": {
+										"value": "@pipeline().parameters.TenantId",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "Content_Forecasting",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Lookup WordHTLocaleCount",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select NumberOfLocales from dbo.Branches \nwhere Guid = '@{pipeline().parameters.LocConfigurationId}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsBranches",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"TenantId": {
+						"type": "string"
+					},
+					"LocConfigurationId": {
+						"type": "string"
+					},
+					"JobId": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"Price": {
+						"type": "String"
+					},
+					"JobEstimatedAWC": {
+						"type": "String"
+					},
+					"ImageHTLocaleCount": {
+						"type": "String",
+						"defaultValue": "0"
+					},
+					"EstimatedJobCost": {
+						"type": "String"
+					},
+					"WordHTLocaleCount": {
+						"type": "String",
+						"defaultValue": "8"
+					},
+					"IsOverBudget": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "FileIngestion"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-01-13T20:34:48Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dfAggregateJobEstimatedAWC')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/HandoffSourceFiles')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "JobSourceFileCount",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "LookupJobSourceFileCount",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "JobSourceFileCount",
+							"value": {
+								"value": "@string(activity('LookupJobSourceFileCount').output.firstRow.JobSourceFileCount)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "LookupJobSourceFileCount",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "SELECT count(1) as JobSourceFileCount from JobAssignment JA\nINNER JOIN SourceFileSnapshot SFS on JA.SourceFileId = SFS.Id\nWHERE JA.LocConfigurationId = '@{pipeline().parameters.LocConfigurationId}'\nAND JA.JobId = '@{pipeline().parameters.JobId}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsJobAssignment",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "IterationCount",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "JobSourceFileCount",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "IterationCount",
+							"value": {
+								"value": "@string(add(div(int(variables('JobSourceFileCount')), pipeline().parameters.IterationChunk), 1))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Until Finish Iteration Count",
+						"type": "Until",
+						"dependsOn": [
+							{
+								"activity": "IterationCount",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Set Continue Iteration to True",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@and(greaterOrEquals(int(variables('IterationIndex')), int(variables('IterationCount'))), variables('ContinueIteration'))",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "PublishSourceFileReadyForHandoff",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "PublishSourceFileReadyForHandoff",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"JobId": {
+												"value": "@pipeline().parameters.JobId",
+												"type": "Expression"
+											},
+											"LocConfigurationId": {
+												"value": "@pipeline().parameters.LocConfigurationId",
+												"type": "Expression"
+											},
+											"SourceFileOffset": {
+												"value": "@mul(int(variables('IterationIndex')), pipeline().parameters.IterationChunk)",
+												"type": "Expression"
+											},
+											"SourceFileChunk": {
+												"value": "@pipeline().parameters.IterationChunk",
+												"type": "Expression"
+											},
+											"TenantId": {
+												"value": "@pipeline().parameters.TenantId",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "Set IterationIndex",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Incremental Iteration Index",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "IterationIndex",
+										"value": {
+											"value": "@variables('TempIterationIndex')",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "Incremental Iteration Index",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "PublishSourceFileReadyForHandoff",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "TempIterationIndex",
+										"value": {
+											"value": "@string(add(int(variables('IterationIndex')), 1))",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "Set ContinueIteration to False",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "PublishSourceFileReadyForHandoff",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "ContinueIteration",
+										"value": {
+											"value": "@bool(0)",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"timeout": "7.00:00:00"
+						}
+					},
+					{
+						"name": "Set Continue Iteration to True",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "ContinueIteration",
+							"value": true
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"LocConfigurationId": {
+						"type": "string"
+					},
+					"TenantId": {
+						"type": "string"
+					},
+					"JobId": {
+						"type": "string"
+					},
+					"IterationChunk": {
+						"type": "int",
+						"defaultValue": 2500
+					}
+				},
+				"variables": {
+					"IterationCount": {
+						"type": "String"
+					},
+					"IterationIndex": {
+						"type": "String",
+						"defaultValue": "0"
+					},
+					"JobSourceFileCount": {
+						"type": "String"
+					},
+					"TempIterationIndex": {
+						"type": "String"
+					},
+					"ContinueIteration": {
+						"type": "Boolean"
+					}
+				},
+				"folder": {
+					"name": "FileIngestion"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-01-12T20:11:11Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/RefreshJobState')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "LookupInProgressJobs",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT * FROM [JobHistory]\nWHERE [StateId] = 2\nAND [CreatedAt] > DATEADD(Day,-2, GETDATE())",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsJobHistory",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach Job",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LookupInProgressJobs",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupInProgressJobs').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Update Job State",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "UpdateJobState",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"LocConfigurationId": {
+												"value": "@item().LocConfigurationId",
+												"type": "Expression"
+											},
+											"JobId": {
+												"value": "@item().JobId",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "FileIngestion"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-01-17T03:49:44Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SinkOpsLcsNotifications')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "dfSinkOpsLcsNotifications",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "LookupLocConfigurationId",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dfSinkOpsLcsNotifications",
+								"type": "DataFlowReference",
+								"parameters": {
+									"SourceId": {
+										"value": "'@{pipeline().parameters.SourceId}'",
+										"type": "Expression"
+									},
+									"LocConfigurationId": {
+										"value": "'@{activity('LookupLocConfigurationId').output.firstRow.LocConfigurationId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"OpsLcsNotification": {
+										"SourceId": {
+											"value": "@pipeline().parameters.SourceId",
+											"type": "Expression"
+										}
+									},
+									"SinkToSourceFiles": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "LookupLocConfigurationId",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select LocConfigurationId from SourceStoreSnapshot\nwhere SourceId = '@{pipeline().parameters.SourceId}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsOpsSourceStore",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"SourceId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Download"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-02-15T07:55:46Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dfSinkOpsLcsNotifications')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SinkOpsSourceFileDownloaded-SingleBranch')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "dfSinkOpsSourceFileDownloaded",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dfSinkOpsSourceFileDownloaded",
+								"type": "DataFlowReference",
+								"parameters": {
+									"LocConfigurationId": {
+										"value": "'@{pipeline().parameters.LocConfigurationId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"OpsSourceFileDownloaded": {
+										"LocConfigurationId": {
+											"value": "@pipeline().parameters.LocConfigurationId",
+											"type": "Expression"
+										}
+									},
+									"SinkSourceFileHistory": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"LocConfigurationId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Download"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-03-02T08:27:12Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dfSinkOpsSourceFileDownloaded')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SinkOpsSourceFileDownloaded')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "LookupLocConfigurations",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select Guid from Branches where IsDeleted = 0",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsBranches",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEach LocConfiguration",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LookupLocConfigurations",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupLocConfigurations').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "dfSinkOpsSourceFileDownloaded",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "dfSinkOpsSourceFileDownloaded",
+											"type": "DataFlowReference",
+											"parameters": {
+												"LocConfigurationId": {
+													"value": "'@{item().Guid}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"OpsSourceFileDownloaded": {
+													"LocConfigurationId": {
+														"value": "@item().Guid",
+														"type": "Expression"
+													}
+												},
+												"SinkSourceFileHistory": {}
+											}
+										},
+										"staging": {},
+										"compute": {
+											"coreCount": 8,
+											"computeType": "General"
+										},
+										"traceLevel": "Fine"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Download"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-02-23T11:06:26Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dfSinkOpsSourceFileDownloaded')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/UnAssignSourceFiles')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "dfUnAssignSourceFiles",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dfUnAssignSourceFiles",
+								"type": "DataFlowReference",
+								"parameters": {
+									"ContentGroupName": {
+										"value": "'@{pipeline().parameters.ContentGroupName}'",
+										"type": "Expression"
+									},
+									"LocConfigurationId": {
+										"value": "'@{pipeline().parameters.LocConfigurationId}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"AssignmentHistory": {},
+									"SinkDeletedAssignment": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"ContentGroupName": {
+						"type": "string"
+					},
+					"LocConfigurationId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "ContentGroup"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-01-12T20:11:11Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dfUnAssignSourceFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AssignSourceFileToJob')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "AssignSourceFileToJob",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "LookupTenant",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LookupHostContentStoreName",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "RefreshContentGroupAssignment",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dfAssignSourceFileToJob",
+								"type": "DataFlowReference",
+								"parameters": {
+									"LocConfigurationId": {
+										"value": "'@{pipeline().parameters.LocConfigurationId}'",
+										"type": "Expression"
+									},
+									"JobId": {
+										"value": "'@{pipeline().parameters.JobId}'",
+										"type": "Expression"
+									},
+									"TenantName": {
+										"value": "'@{activity('LookupTenant').output.firstRow.Name}'",
+										"type": "Expression"
+									},
+									"HostContentStoreName": {
+										"value": "'@{activity('LookupHostContentStoreName').output.firstRow.Name}'",
+										"type": "Expression"
+									},
+									"TenantId": {
+										"value": "'@{activity('LookupTenant').output.firstRow.Id}'",
+										"type": "Expression"
+									}
+								},
+								"datasetParameters": {
+									"SourceFile": {},
+									"ContentGroup": {},
+									"SinkToJobAssignment": {},
+									"SinkToSourceFileHistory": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "LookupTenant",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select T.Name, T.Id from [dbo].[Branches] B\nleft join [dbo].[Tenant] T on B.TenantId = T.Id\nwhere B.Guid = '@{pipeline().parameters.LocConfigurationId}'\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsTenant",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "LookupHostContentStoreName",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select HCS.Name from [dbo].[Branches] as B\nleft join [dbo].[HostContentStore] as HCS on B.HostContentStoreId = HCS.Id and B.TenantId = HCS.TenantId\nwhere Guid = '@{pipeline().parameters.LocConfigurationId}'\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsHostContentStore",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "EstimateJobCost",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "AssignSourceFileToJob",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "EstimateJobCost",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"TenantId": {
+									"value": "@activity('LookupTenant').output.firstrow.Id",
+									"type": "Expression"
+								},
+								"LocConfigurationId": {
+									"value": "@pipeline().parameters.LocConfigurationId",
+									"type": "Expression"
+								},
+								"JobId": {
+									"value": "@pipeline().parameters.JobId",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "Continue Handoff if Within Budget",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Lookup IsOverBudget",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@or(not(pipeline().parameters.EnableBudgetControl), not(bool(activity('Lookup IsOverBudget').output.firstRow.IsOverBudget)))",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "UpdateJobSummary",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "SetJobStateToCancelledByForecasting",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "UpdateJobState",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"LocConfigurationId": {
+												"value": "@pipeline().parameters.LocConfigurationId",
+												"type": "Expression"
+											},
+											"JobId": {
+												"value": "@pipeline().parameters.JobId",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "SetJobStateToCancelledByForecasting",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[UpdateJobState]",
+										"storedProcedureParameters": {
+											"jobId": {
+												"value": {
+													"value": "@pipeline().parameters.JobId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"locConfigurationId": {
+												"value": {
+													"value": "@pipeline().parameters.LocConfigurationId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"stateName": {
+												"value": {
+													"value": "CancelledByForecasting",
+													"type": "Expression"
+												},
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "Content_Handoff",
+										"type": "LinkedServiceReference"
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "HandoffSourceFiles",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "UpdateJobStateSummary",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "HandoffSourceFiles",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"LocConfigurationId": {
+												"value": "@pipeline().parameters.LocConfigurationId",
+												"type": "Expression"
+											},
+											"TenantId": {
+												"value": "@activity('LookupTenant').output.firstRow.Id",
+												"type": "Expression"
+											},
+											"JobId": {
+												"value": "@pipeline().parameters.JobId",
+												"type": "Expression"
+											},
+											"IterationChunk": {
+												"value": "@pipeline().parameters.IterationChunk",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "UpdateJobStateSummary",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "UpdateJobStateToInProgress",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "UpdateJobState",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"LocConfigurationId": {
+												"value": "@pipeline().parameters.LocConfigurationId",
+												"type": "Expression"
+											},
+											"JobId": {
+												"value": "@pipeline().parameters.JobId",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "UpdateJobStateToInProgress",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[UpdateJobState]",
+										"storedProcedureParameters": {
+											"jobId": {
+												"value": {
+													"value": "@pipeline().parameters.JobId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"locConfigurationId": {
+												"value": {
+													"value": "@pipeline().parameters.LocConfigurationId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"stateName": {
+												"value": "InProgress",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "Content_Handoff",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Lookup IsOverBudget",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "EstimateJobCost",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select IsOverBudget from [dbo].[HandoffJobForecasting]\nwhere JobId = '@{pipeline().parameters.JobId}' \nand LocConfigurationId = '@{pipeline().parameters.LocConfigurationId}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "dsHandoffJobForecasting",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "RefreshContentGroupAssignment",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[BulkUpdateContentGroupAssignments]",
+							"storedProcedureParameters": {
+								"LocConfigurationId": {
+									"value": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "Content_Handoff",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"JobId": {
+						"type": "string"
+					},
+					"LocConfigurationId": {
+						"type": "string"
+					},
+					"IterationChunk": {
+						"type": "int",
+						"defaultValue": 2500
+					},
+					"EnableBudgetControl": {
+						"type": "bool",
+						"defaultValue": false
+					}
+				},
+				"variables": {
+					"IterationCount": {
+						"type": "String"
+					},
+					"IterationIndex": {
+						"type": "String",
+						"defaultValue": "0"
+					},
+					"JobSourceFileCount": {
+						"type": "String"
+					},
+					"TempIterationIndex": {
+						"type": "String"
+					},
+					"ContinueIteration": {
+						"type": "Boolean"
+					}
+				},
+				"folder": {
+					"name": "FileIngestion"
+				},
+				"annotations": [],
+				"lastPublishTime": "2022-03-22T23:40:02Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dfAssignSourceFileToJob')]",
+				"[concat(variables('factoryId'), '/pipelines/EstimateJobCost')]",
+				"[concat(variables('factoryId'), '/pipelines/HandoffSourceFiles')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Recurrence_60m')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "RefreshJobState",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "SinkOpsSourceFileDownloaded",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Minute",
+						"interval": 60,
+						"startTime": "2021-07-14T21:26:00Z",
+						"timeZone": "UTC"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/RefreshJobState')]",
+				"[concat(variables('factoryId'), '/pipelines/SinkOpsSourceFileDownloaded')]"
+			]
+		}
+	]
+}

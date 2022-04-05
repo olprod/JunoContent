@@ -1,0 +1,847 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "juno-ct-adf-r1-prod"
+		},
+		"Content_Forecasting_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Content_Forecasting'"
+		},
+		"Content_Handoff_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Content_Handoff'"
+		},
+		"Content_LocConfig_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Content_LocConfig'"
+		},
+		"Content_OpsConnector_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Content_OpsConnector'"
+		},
+		"Content_OpsConnector_LCS_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Content_OpsConnector_LCS'"
+		},
+		"junoctfistr1prod_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'junoctfistr1prod'"
+		},
+		"junoctopscstr1prod_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'junoctopscstr1prod'"
+		},
+		"adeFileTracking_properties_typeProperties_endpoint": {
+			"type": "string",
+			"defaultValue": "https://junoctader1prod.eastus.kusto.windows.net"
+		},
+		"adeFileTracking_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "FinancialForecasting"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Content_Forecasting')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('Content_Forecasting_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Content_Handoff')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Linked Service for Content_Handoff SQL Database ",
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('Content_Handoff_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Content_LocConfig')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Linked Service for Content_LocConfig SQL Database \njuno-c-sql-r2-int.database.windows.net. ",
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('Content_LocConfig_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Content_OpsConnector')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('Content_OpsConnector_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Content_OpsConnector_LCS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('Content_OpsConnector_LCS_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/adeFileTracking')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Linked Service for Azure Data Explorer Cluster",
+				"annotations": [],
+				"type": "AzureDataExplorer",
+				"typeProperties": {
+					"endpoint": "[parameters('adeFileTracking_properties_typeProperties_endpoint')]",
+					"database": "[parameters('adeFileTracking_properties_typeProperties_database')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/junoctfistr1prod')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('junoctfistr1prod_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/junoctopscstr1prod')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('junoctopscstr1prod_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/daily trigger')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Run the copy of tables once a day.",
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Hour",
+						"interval": 12,
+						"startTime": "2021-08-30T13:33:00Z",
+						"endTime": "2022-05-31T17:28:00Z",
+						"timeZone": "UTC"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsBranches')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_LocConfig",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "LocConfiguration"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Guid",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "IsInActive",
+						"type": "bit"
+					},
+					{
+						"name": "IsDeleted",
+						"type": "bit"
+					},
+					{
+						"name": "DataStoreId",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "LocSystemId",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "PublishSystemId",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "Version",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "TenantId",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "HostContentStoreId",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "NumberOfLocales",
+						"type": "int",
+						"precision": 10
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Branches"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Content_LocConfig')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsContentGroupAssignmentHistory')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ContentGroup"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "LocConfigurationId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FileTrackingId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ContentGroupName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Version",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "IsDeleted",
+						"type": "bit"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "ContentGroupAssignmentHistory"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Content_Handoff')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsContentGroupAssignmentSnapshot')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ContentGroup"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "LocConfigurationId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FileTrackingId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ContentGroupName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Timestamp",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "IsDeleted",
+						"type": "bit"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "ContentGroupAssignmentSnapshot"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Content_Handoff')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsContentGroupHistory')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ContentGroup"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "LocConfigurationId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DefaultTreatmentPreference",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Query",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Version",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "IsDeleted",
+						"type": "bit"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "ContentGroupHistory"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Content_Handoff')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsContentGroupSnapshot')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "ContentGroup"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "LocConfigurationId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DefaultTreatmentPreference",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Query",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Version",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "ContentGroupSnapshot"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Content_Handoff')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsHandoffJobForecasting')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Forecasting",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Forecasting"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "TenantId",
+						"type": "varchar"
+					},
+					{
+						"name": "LocConfigurationId",
+						"type": "varchar"
+					},
+					{
+						"name": "JobId",
+						"type": "varchar"
+					},
+					{
+						"name": "EstimatedWC",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "EstimatedAWC",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "Price",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "HTLocalesCount",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "EstimatedCost",
+						"type": "nchar"
+					},
+					{
+						"name": "RunningBudget",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "IsOverBudget",
+						"type": "bit"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "HandoffJobForecasting"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Content_Forecasting')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsHostContentStore')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_LocConfig",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "LocConfiguration"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Id",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "Name",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TenantId",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "Version",
+						"type": "int",
+						"precision": 10
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "HostContentStore"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Content_LocConfig')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsJobAssignment')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Handoff"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "SourceFileId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "LocConfigurationId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FileTrackingId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Version",
+						"type": "nvarchar"
+					},
+					{
+						"name": "JobId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TenantName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "HostContentStoreName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "ContentGroupName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "DefaultTreatmentPreference",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Timestamp",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "JobAssignment"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Content_Handoff')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsJobHistory')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Handoff"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "LocConfigurationId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "JobId",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CreatedAt",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "Type",
+						"type": "nvarchar"
+					},
+					{
+						"name": "StateId",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CreatedBy",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TotalFileCount",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "SubmittedFileCount",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "FailedFileCount",
+						"type": "int",
+						"precision": 10
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "JobHistory"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Content_Handoff')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsLocFileAggregate')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "junoctopscstr1prod",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"LocConfigurationId": {
+						"type": "string"
+					},
+					"JobId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Handback"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@concat(dataset().JobId, '/', dataset().JobId, '.json')",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "LocFileReadyForCheckInAggregate",
+							"type": "Expression"
+						},
+						"container": "han"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/junoctopscstr1prod')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dsOpsLcsNotification')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Content_OpsConnector_LCS",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"SourceId": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Download"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"folderPath": {
+							"value": "@dataset().SourceId",
+							"type": "Expression"
+						},
+						"container": "ops-lcs-notification"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"event_type": {
+							"type": "string"
+						},
+						"event_time": {
+							"type": "string"
+						},
+						"event_creator": {
+							"type": "string"
+						},
+						"files": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"file_id": {
+										"type": "string"
+									},
+									"version": {
+										"type": "string"
+									},
+									"locale": {
+										"type": "string"
+									},
+									"source_id": {
+										"type": "string"
+									},
+									"type": {
+										"type": "string"
+									},
+									"status": {
+										"type": "string"
+									},
+									"is_content_changed": {
+										"type": "boolean"
+									},
+									"is_skeleton_changed": {
+										"type": "boolean"
+									},
+									"is_metadata_changed": {
+										"type": "boolean"
+									},
+									"is_loc_metadata_changed": {
+										"type": "boolean"
+									},
+									"is_reference_to_changed": {
+										"type": "boolean"
+									}
+								}
+							}
+						},
+						"EventProcessedUtcTime": {
+							"type": "string"
+						},
+						"PartitionId": {
+							"type": "integer"
+						},
+						"EventEnqueuedUtcTime": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Content_OpsConnector_LCS')]"
+			]
+		}
+	]
+}
