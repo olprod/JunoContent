@@ -1,0 +1,247 @@
+{
+	"name": "HandoffSourceFiles",
+	"properties": {
+		"activities": [
+			{
+				"name": "JobSourceFileCount",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "LookupJobSourceFileCount",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "JobSourceFileCount",
+					"value": {
+						"value": "@string(activity('LookupJobSourceFileCount').output.firstRow.JobSourceFileCount)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "LookupJobSourceFileCount",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT count(1) as JobSourceFileCount from JobAssignment JA\nINNER JOIN SourceFileSnapshot SFS on JA.SourceFileId = SFS.Id\nWHERE JA.LocConfigurationId = '@{pipeline().parameters.LocConfigurationId}'\nAND JA.JobId = '@{pipeline().parameters.JobId}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "dsJobAssignment",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "IterationCount",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "JobSourceFileCount",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "IterationCount",
+					"value": {
+						"value": "@string(add(div(int(variables('JobSourceFileCount')), pipeline().parameters.IterationChunk), 1))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Until Finish Iteration Count",
+				"type": "Until",
+				"dependsOn": [
+					{
+						"activity": "IterationCount",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Set Continue Iteration to True",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(greaterOrEquals(int(variables('IterationIndex')), int(variables('IterationCount'))), variables('ContinueIteration'))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "PublishSourceFileReadyForHandoff",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "PublishSourceFileReadyForHandoff",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"JobId": {
+										"value": "@pipeline().parameters.JobId",
+										"type": "Expression"
+									},
+									"LocConfigurationId": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"SourceFileOffset": {
+										"value": "@mul(int(variables('IterationIndex')), pipeline().parameters.IterationChunk)",
+										"type": "Expression"
+									},
+									"SourceFileChunk": {
+										"value": "@pipeline().parameters.IterationChunk",
+										"type": "Expression"
+									},
+									"TenantId": {
+										"value": "@pipeline().parameters.TenantId",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Set IterationIndex",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Incremental Iteration Index",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IterationIndex",
+								"value": {
+									"value": "@variables('TempIterationIndex')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Incremental Iteration Index",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "PublishSourceFileReadyForHandoff",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "TempIterationIndex",
+								"value": {
+									"value": "@string(add(int(variables('IterationIndex')), 1))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set ContinueIteration to False",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "PublishSourceFileReadyForHandoff",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ContinueIteration",
+								"value": {
+									"value": "@bool(0)",
+									"type": "Expression"
+								}
+							}
+						}
+					],
+					"timeout": "7.00:00:00"
+				}
+			},
+			{
+				"name": "Set Continue Iteration to True",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "ContinueIteration",
+					"value": true
+				}
+			}
+		],
+		"parameters": {
+			"LocConfigurationId": {
+				"type": "string"
+			},
+			"TenantId": {
+				"type": "string"
+			},
+			"JobId": {
+				"type": "string"
+			},
+			"IterationChunk": {
+				"type": "int",
+				"defaultValue": 2500
+			}
+		},
+		"variables": {
+			"IterationCount": {
+				"type": "String"
+			},
+			"IterationIndex": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"JobSourceFileCount": {
+				"type": "String"
+			},
+			"TempIterationIndex": {
+				"type": "String"
+			},
+			"ContinueIteration": {
+				"type": "Boolean"
+			}
+		},
+		"folder": {
+			"name": "FileIngestion"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-01-12T20:11:11Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

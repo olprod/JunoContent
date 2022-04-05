@@ -1,0 +1,138 @@
+{
+	"name": "PublishSourceFileReadyForHandoff",
+	"properties": {
+		"activities": [
+			{
+				"name": "LookupSourceFiles",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT SFS.*, JA.ContentGroupName, JA.DefaultTreatmentPreference, JA.TenantName As Tenant, JA.HostContentStoreName from JobAssignment JA\nINNER JOIN SourceFileSnapshot SFS on JA.SourceFileId = SFS.Id\nWHERE JA.LocConfigurationId = '@{pipeline().parameters.LocConfigurationId}'\nAND JA.JobId = '@{pipeline().parameters.JobId}'\nORDER BY SFS.TrackingId\nOFFSET @{pipeline().parameters.SourceFileOffset} ROWS\nFETCH NEXT @{pipeline().parameters.SourceFileChunk} ROWS ONLY",
+							"type": "Expression"
+						},
+						"queryTimeout": "00:30:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "dsJobAssignment",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEachSourceFile",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LookupSourceFiles",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "LookupTransformOptions",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupSourceFiles').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "PublishSourceFileReadyForHandoffEvent",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"url": {
+									"value": "@pipeline().globalParameters.sourceFileReadyForHandoffEventPublisherUrl",
+									"type": "Expression"
+								},
+								"method": "POST",
+								"body": {
+									"value": "{\n  \"LocConfigurationId\": \"@{item().LocConfigurationId}\",\n  \"TrackingId\": \"@{item().TrackingId}\",\n  \"Version\": \"@{item().Version}\",\n  \"Locale\": \"@{item().Locale}\",\n  \"ContentType\": \"@{item().ContentType}\",\n  \"ContentUrl\": \"@{item().ContentUrl}\",\n  \"FilePath\": \"@{item().FilePath}\",\n  \"LocTopic\": \"@{item().LocTopic}\",\n  \"LocPriority\": \"@{item().LocPriority}\",\n  \"CommitId\": \"@{item().CommitId}\",\n  \"IsContentChanged\": @{if(item().IsContentChanged, 'true', 'false')},\n  \"IsLocMetadataChanged\": @{if(item().IsLocMetadataChanged, 'true', 'false')},\n  \"IsSkeletonChanged\": true,\n  \"ContentGroupName\": \"@{item().ContentGroupName}\",\n  \"DefaultTreatmentPreference\": \"@{item().DefaultTreatmentPreference}\",\n  \"Tenant\": \"@{item().Tenant}\",\n  \"TenantId\": \"@{pipeline().parameters.TenantId}\",\n  \"HostContentStoreName\": \"@{item().HostContentStoreName}\"\n}",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "LookupTransformOptions",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select O.* from [dbo].[Branches] B\ninner join [dbo].[Tenant] T on B.TenantId = T.Id\ninner join [dbo].[TransformerOptions] O on T.TransformerOptionsId = O.Id\nwhere B.Guid = '@{pipeline().parameters.LocConfigurationId}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "dsTenant",
+						"type": "DatasetReference"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"JobId": {
+				"type": "string"
+			},
+			"LocConfigurationId": {
+				"type": "string"
+			},
+			"SourceFileOffset": {
+				"type": "int"
+			},
+			"SourceFileChunk": {
+				"type": "int"
+			},
+			"TenantId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "FileIngestion"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-01-15T23:54:08Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

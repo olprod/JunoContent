@@ -1,0 +1,19 @@
+{
+	"name": "daily trigger",
+	"properties": {
+		"description": "Run the copy of tables once a day.",
+		"annotations": [],
+		"runtimeState": "Stopped",
+		"pipelines": [],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Hour",
+				"interval": 12,
+				"startTime": "2021-08-30T13:33:00Z",
+				"endTime": "2022-05-31T17:28:00Z",
+				"timeZone": "UTC"
+			}
+		}
+	}
+}

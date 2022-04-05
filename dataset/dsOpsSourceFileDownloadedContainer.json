@@ -1,0 +1,31 @@
+{
+	"name": "dsOpsSourceFileDownloadedContainer",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_OpsConnector_LCS",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"LocConfigurationId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Download"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"folderPath": {
+					"value": "@dataset().LocConfigurationId",
+					"type": "Expression"
+				},
+				"container": "ops-source-file-downloaded"
+			}
+		},
+		"schema": {}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

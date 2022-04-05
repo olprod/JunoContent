@@ -1,0 +1,48 @@
+{
+	"name": "dsContentGroupSnapshot",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_Handoff",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "ContentGroup"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "LocConfigurationId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Name",
+				"type": "nvarchar"
+			},
+			{
+				"name": "DefaultTreatmentPreference",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Query",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Version",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "ContentGroupSnapshot"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

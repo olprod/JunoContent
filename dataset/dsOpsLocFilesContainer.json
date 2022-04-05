@@ -1,0 +1,113 @@
+{
+	"name": "dsOpsLocFilesContainer",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "junoctopscstr1prod",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"LocConfigurationId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Handback"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"folderPath": {
+					"value": "@dataset().LocConfigurationId",
+					"type": "Expression"
+				},
+				"container": "ops-loc-files"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				"TranslationContext": {
+					"type": "object",
+					"properties": {
+						"locConfigurationId": {
+							"type": "string"
+						},
+						"targetLocale": {
+							"type": "string"
+						},
+						"translationId": {
+							"type": "string"
+						},
+						"translationFlavor": {
+							"type": "string"
+						},
+						"translationRevision": {
+							"type": "string"
+						},
+						"$typeId": {
+							"type": "string"
+						}
+					}
+				},
+				"contentUri": {
+					"type": "string"
+				},
+				"fileIdentifier": {
+					"type": "object",
+					"properties": {
+						"locConfigurationId": {
+							"type": "string"
+						},
+						"trackingId": {
+							"type": "string"
+						},
+						"version": {
+							"type": "string"
+						},
+						"locale": {
+							"type": "string"
+						},
+						"contentType": {
+							"type": "object",
+							"properties": {
+								"Name": {
+									"type": "string"
+								},
+								"Id": {
+									"type": "integer"
+								},
+								"$typeId": {
+									"type": "string"
+								}
+							}
+						},
+						"$typeId": {
+							"type": "string"
+						}
+					}
+				},
+				"locConfigurationId": {
+					"type": "string"
+				},
+				"tenantId": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"createdAt": {
+					"type": "string"
+				},
+				"createdBy": {
+					"type": "string"
+				},
+				"$typeId": {
+					"type": "string"
+				}
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

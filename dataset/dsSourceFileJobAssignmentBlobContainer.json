@@ -1,0 +1,22 @@
+{
+	"name": "dsSourceFileJobAssignmentBlobContainer",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "junoctfistr1prod",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Handoff"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"container": "source-file-job-assignment"
+			}
+		},
+		"schema": {}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

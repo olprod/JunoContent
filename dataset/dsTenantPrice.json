@@ -1,0 +1,44 @@
+{
+	"name": "dsTenantPrice",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_Forecasting",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Forecasting"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TenantId",
+				"type": "varchar"
+			},
+			{
+				"name": "ContentTypeId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TranslationFlavor",
+				"type": "varchar"
+			},
+			{
+				"name": "Price",
+				"type": "float",
+				"precision": 15
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Prices"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

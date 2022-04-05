@@ -1,0 +1,64 @@
+{
+	"name": "dsJobAssignment",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_Handoff",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Handoff"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "SourceFileId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "LocConfigurationId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "FileTrackingId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Version",
+				"type": "nvarchar"
+			},
+			{
+				"name": "JobId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "TenantName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "HostContentStoreName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "ContentGroupName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "DefaultTreatmentPreference",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Timestamp",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "JobAssignment"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

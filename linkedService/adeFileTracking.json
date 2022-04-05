@@ -1,0 +1,13 @@
+{
+	"name": "adeFileTracking",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "Linked Service for Azure Data Explorer Cluster",
+		"annotations": [],
+		"type": "AzureDataExplorer",
+		"typeProperties": {
+			"endpoint": "https://junoctader1prod.eastus.kusto.windows.net",
+			"database": "FinancialForecasting"
+		}
+	}
+}

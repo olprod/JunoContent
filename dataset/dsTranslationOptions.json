@@ -1,0 +1,16 @@
+{
+	"name": "dsTranslationOptions",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_LocConfig",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "LocConfiguration"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

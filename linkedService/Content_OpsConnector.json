@@ -1,0 +1,11 @@
+{
+	"name": "Content_OpsConnector",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"connectionString": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=juno-c-sql-r1-prod.database.windows.net;Initial Catalog=Content_OpsConnector"
+		}
+	}
+}

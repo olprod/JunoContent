@@ -1,0 +1,103 @@
+{
+	"name": "AssignSourceFilesToContentGroup",
+	"properties": {
+		"activities": [
+			{
+				"name": "dsAssignSourceFiles",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "dfUnAssignSourceFiles",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "dfAssignSourceFiles",
+						"type": "DataFlowReference",
+						"parameters": {
+							"QueryString": {
+								"value": "'@{''}'",
+								"type": "Expression"
+							},
+							"ContentGroupName": {
+								"value": "'@{pipeline().parameters.ContentGroupName}'",
+								"type": "Expression"
+							},
+							"LocConfigurationId": {
+								"value": "'@{pipeline().parameters.LocConfigurationId}'",
+								"type": "Expression"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "dfUnAssignSourceFiles",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "dfUnAssignSourceFiles",
+						"type": "DataFlowReference",
+						"parameters": {
+							"ContentGroupName": {
+								"value": "'@{pipeline().parameters.ContentGroupName}'",
+								"type": "Expression"
+							},
+							"LocConfigurationId": {
+								"value": "'@{pipeline().parameters.LocConfigurationId}'",
+								"type": "Expression"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			}
+		],
+		"parameters": {
+			"ContentGroupName": {
+				"type": "string"
+			},
+			"QueryString": {
+				"type": "string"
+			},
+			"LocConfigurationId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "ContentGroup"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-01-12T20:11:12Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

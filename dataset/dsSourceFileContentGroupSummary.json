@@ -1,0 +1,95 @@
+{
+	"name": "dsSourceFileContentGroupSummary",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_Handoff",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Handoff"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "LocConfigurationId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "TrackingId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Version",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Locale",
+				"type": "nvarchar"
+			},
+			{
+				"name": "ContentType",
+				"type": "nvarchar"
+			},
+			{
+				"name": "StateId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "ContentUrl",
+				"type": "nvarchar"
+			},
+			{
+				"name": "FilePath",
+				"type": "nvarchar"
+			},
+			{
+				"name": "LocTopic",
+				"type": "nvarchar"
+			},
+			{
+				"name": "LocPriority",
+				"type": "nvarchar"
+			},
+			{
+				"name": "CommitId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "IsContentChanged",
+				"type": "bit"
+			},
+			{
+				"name": "IsLocMetadataChanged",
+				"type": "bit"
+			},
+			{
+				"name": "IsSkeletonChanged",
+				"type": "bit"
+			},
+			{
+				"name": "IsDeleted",
+				"type": "bit"
+			},
+			{
+				"name": "IsLatest",
+				"type": "bit"
+			},
+			{
+				"name": "ContentGroupName",
+				"type": "nvarchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "SourceFileContentGroupSummary"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

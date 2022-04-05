@@ -1,0 +1,61 @@
+{
+	"name": "dsSourceFileForecasting",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_Forecasting",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Forecasting"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TenantId",
+				"type": "varchar"
+			},
+			{
+				"name": "LocConfigurationId",
+				"type": "varchar"
+			},
+			{
+				"name": "FileTrackingId",
+				"type": "varchar"
+			},
+			{
+				"name": "Version",
+				"type": "varchar"
+			},
+			{
+				"name": "ContentType",
+				"type": "varchar"
+			},
+			{
+				"name": "EstimateWC",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "EstimateAWC",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "EstimateCost",
+				"type": "float",
+				"precision": 15
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "SourceFileForecasting"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

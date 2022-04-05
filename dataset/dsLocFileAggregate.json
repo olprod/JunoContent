@@ -1,0 +1,38 @@
+{
+	"name": "dsLocFileAggregate",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "junoctopscstr1prod",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"LocConfigurationId": {
+				"type": "string"
+			},
+			"JobId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Handback"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": {
+					"value": "@concat(dataset().JobId, '/', dataset().JobId, '.json')",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "LocFileReadyForCheckInAggregate",
+					"type": "Expression"
+				},
+				"container": "han"
+			}
+		},
+		"schema": {}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

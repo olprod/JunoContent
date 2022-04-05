@@ -1,0 +1,111 @@
+{
+	"name": "AssignSourceFileToContentGroup",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup ContentGroups",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT [Name], [Query] FROM [dbo].[ContentGroupSnapshot]\nWHERE [LocConfigurationId] = '@{pipeline().parameters.LocConfigurationId}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "dsContentGroupSnapshot",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach ContentGroup",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup ContentGroups",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup ContentGroups').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "AssignSourceFileToContentGroup",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[AssignNewSourceFileToContentGroup]",
+								"storedProcedureParameters": {
+									"ContentGroupName": {
+										"value": {
+											"value": "@item().Name",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"LocConfigurationId": {
+										"value": {
+											"value": "@pipeline().parameters.LocConfigurationId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"Query": {
+										"value": {
+											"value": "@item().Query",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "Content_Handoff",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"LocConfigurationId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "FileIngestion"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-01-12T20:11:10Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

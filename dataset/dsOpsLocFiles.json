@@ -1,0 +1,58 @@
+{
+	"name": "dsOpsLocFiles",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_OpsConnector",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Handback"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "TenantId",
+				"type": "varbinary"
+			},
+			{
+				"name": "LocConfigurationId",
+				"type": "varchar"
+			},
+			{
+				"name": "TrackingId",
+				"type": "varchar"
+			},
+			{
+				"name": "Version",
+				"type": "varchar"
+			},
+			{
+				"name": "Locale",
+				"type": "varchar"
+			},
+			{
+				"name": "Revision",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "ContentUrl",
+				"type": "varchar"
+			},
+			{
+				"name": "UpdatedAt",
+				"type": "varchar"
+			},
+			{
+				"name": "TranslationType",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "LocFiles"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

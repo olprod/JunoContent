@@ -1,0 +1,94 @@
+{
+	"name": "dsOpsLcsNotification",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_OpsConnector_LCS",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"SourceId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Download"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"folderPath": {
+					"value": "@dataset().SourceId",
+					"type": "Expression"
+				},
+				"container": "ops-lcs-notification"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				"event_type": {
+					"type": "string"
+				},
+				"event_time": {
+					"type": "string"
+				},
+				"event_creator": {
+					"type": "string"
+				},
+				"files": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"file_id": {
+								"type": "string"
+							},
+							"version": {
+								"type": "string"
+							},
+							"locale": {
+								"type": "string"
+							},
+							"source_id": {
+								"type": "string"
+							},
+							"type": {
+								"type": "string"
+							},
+							"status": {
+								"type": "string"
+							},
+							"is_content_changed": {
+								"type": "boolean"
+							},
+							"is_skeleton_changed": {
+								"type": "boolean"
+							},
+							"is_metadata_changed": {
+								"type": "boolean"
+							},
+							"is_loc_metadata_changed": {
+								"type": "boolean"
+							},
+							"is_reference_to_changed": {
+								"type": "boolean"
+							}
+						}
+					}
+				},
+				"EventProcessedUtcTime": {
+					"type": "string"
+				},
+				"PartitionId": {
+					"type": "integer"
+				},
+				"EventEnqueuedUtcTime": {
+					"type": "string"
+				}
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

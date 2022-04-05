@@ -1,0 +1,41 @@
+{
+	"name": "dfSinkOpsSourceFileDownloaded",
+	"properties": {
+		"folder": {
+			"name": "Download"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "dsOpsSourceFileDownloadedContainer",
+						"type": "DatasetReference"
+					},
+					"name": "OpsSourceFileDownloaded"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "dsSourceFileHistory",
+						"type": "DatasetReference"
+					},
+					"name": "SinkSourceFileHistory"
+				}
+			],
+			"transformations": [
+				{
+					"name": "AlterRow"
+				},
+				{
+					"name": "DerivedColumns"
+				},
+				{
+					"name": "filter"
+				}
+			],
+			"script": "parameters{\n\tLocConfigurationId as string\n}\nsource(output(\n\t\t{$typeId} as string,\n\t\tContentType as string,\n\t\tcontentUri as string,\n\t\tcreatedAt as string,\n\t\tcreatedBy as string,\n\t\tfileIdentifier as ({$typeId} as string, contentType as ({$typeId} as string, Id as boolean, Name as string), locConfigurationId as string, locale as string, trackingId as string, version as string),\n\t\tid as string,\n\t\tlocConfigurationId as string,\n\t\tlocMetadata as ({$typeId} as string, locPriority as string, locTopic as string),\n\t\tmetadata as ({$typeId} as string, changeOrigin as string, filePath as string),\n\t\tsourceUpdate as ({$typeId} as string, isContentChanged as boolean, isLocMetadataChanged as boolean),\n\t\ttenantId as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: true,\n\tpurgeFiles: true,\n\tdocumentForm: 'documentPerLine',\n\twildcardPaths:[(concat($LocConfigurationId, '/**/*.json'))]) ~> OpsSourceFileDownloaded\nDerivedColumns alterRow(upsertIf(true())) ~> AlterRow\nfilter derive(StateId = 1,\n\t\tIsDeleted = 0,\n\t\tIsLatest = 1) ~> DerivedColumns\nOpsSourceFileDownloaded filter(!isNull(locConfigurationId)) ~> filter\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tTenantId as string,\n\t\tTrackingId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tContentType as string,\n\t\tStateId as integer,\n\t\tContentUrl as string,\n\t\tFilePath as string,\n\t\tLocTopic as string,\n\t\tLocPriority as string,\n\t\tCommitId as string,\n\t\tIsContentChanged as boolean,\n\t\tIsContentGroupLocMetadataChanged as boolean,\n\t\tIsLocMetadataChanged as boolean,\n\t\tIsSkeletonChanged as boolean,\n\t\tIsDeleted as boolean,\n\t\tIsLatest as boolean,\n\t\tRevision as integer,\n\t\tSubStateId as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','TrackingId','Version'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tLocConfigurationId = fileIdentifier.locConfigurationId,\n\t\tTrackingId = fileIdentifier.trackingId,\n\t\tVersion = fileIdentifier.version,\n\t\tLocale = fileIdentifier.locale,\n\t\tContentType = fileIdentifier.contentType.Name,\n\t\tStateId,\n\t\tContentUrl = contentUri,\n\t\tFilePath = metadata.filePath,\n\t\tLocTopic = locMetadata.locTopic,\n\t\tLocPriority = locMetadata.locPriority,\n\t\tCommitId = metadata.changeOrigin,\n\t\tIsContentChanged = sourceUpdate.isContentChanged,\n\t\tIsLocMetadataChanged = sourceUpdate.isLocMetadataChanged,\n\t\tIsDeleted,\n\t\tIsLatest,\n\t\tTenantId = tenantId\n\t)) ~> SinkSourceFileHistory"
+		}
+	}
+}

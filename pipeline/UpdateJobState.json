@@ -1,0 +1,123 @@
+{
+	"name": "UpdateJobState",
+	"properties": {
+		"activities": [
+			{
+				"name": "UpdateJobSummary",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[UpdateJobSummary]",
+					"storedProcedureParameters": {
+						"jobId": {
+							"value": {
+								"value": "@pipeline().parameters.JobId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"locConfigurationId": {
+							"value": {
+								"value": "@pipeline().parameters.LocConfigurationId",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "LookupJobState",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "UpdateJobSummary",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT JH.*, JS.Name as State From [JobHistory] JH\nLEFT JOIN [JobState] JS on JH.StateId = JS.Id\nWHERE JH.LocConfigurationId = '@{pipeline().parameters.LocConfigurationId}'\nAND JH.JobId = '@{pipeline().parameters.JobId}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "dsJobHistory",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "PublishJobStateChangedEvent",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "LookupJobState",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "@pipeline().globalParameters.updateJobStateEventPublisherUrl",
+						"type": "Expression"
+					},
+					"method": "POST",
+					"body": {
+						"value": "@activity('LookupJobState').output.firstRow",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"LocConfigurationId": {
+				"type": "string"
+			},
+			"JobId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "FileIngestion"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-01-12T20:11:10Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,30 @@
+{
+	"name": "Recurrence_60m",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "RefreshJobState",
+					"type": "PipelineReference"
+				}
+			},
+			{
+				"pipelineReference": {
+					"referenceName": "SinkOpsSourceFileDownloaded",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Minute",
+				"interval": 60,
+				"startTime": "2021-07-14T21:26:00Z",
+				"timeZone": "UTC"
+			}
+		}
+	}
+}

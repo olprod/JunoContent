@@ -1,0 +1,41 @@
+{
+	"name": "dfUnAssignSourceFiles",
+	"properties": {
+		"folder": {
+			"name": "ContentGroup/Assignment"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "dsContentGroupAssignmentHistory",
+						"type": "DatasetReference"
+					},
+					"name": "AssignmentHistory"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "dsContentGroupAssignmentHistory",
+						"type": "DatasetReference"
+					},
+					"name": "SinkDeletedAssignment"
+				}
+			],
+			"transformations": [
+				{
+					"name": "FilterByName"
+				},
+				{
+					"name": "SetDeletedFlag"
+				},
+				{
+					"name": "AlterRow"
+				}
+			],
+			"script": "parameters{\n\tContentGroupName as string,\n\tLocConfigurationId as string\n}\nsource(output(\n\t\tLocConfigurationId as string,\n\t\tFileTrackingId as string,\n\t\tContentGroupName as string,\n\t\tVersion as timestamp,\n\t\tIsDeleted as boolean\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> AssignmentHistory\nAssignmentHistory filter(equals(LocConfigurationId, $LocConfigurationId) && equals(ContentGroupName, $ContentGroupName) && !IsDeleted) ~> FilterByName\nFilterByName derive(IsDeleted = 1) ~> SetDeletedFlag\nSetDeletedFlag alterRow(upsertIf(true())) ~> AlterRow\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tLocConfigurationId as string,\n\t\tFileTrackingId as string,\n\t\tContentGroupName as string,\n\t\tVersion as timestamp,\n\t\tIsDeleted as boolean\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','FileTrackingId'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> SinkDeletedAssignment"
+		}
+	}
+}

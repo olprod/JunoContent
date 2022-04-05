@@ -1,0 +1,12 @@
+{
+	"name": "Content_Handoff",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "Linked Service for Content_Handoff SQL Database ",
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"connectionString": "Data Source=tcp:juno-c-sql-prod.database.windows.net;Initial Catalog=Content_Handoff;Persist Security Info=False;MultipleActiveResultSets=True;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+		}
+	}
+}

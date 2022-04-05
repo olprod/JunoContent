@@ -1,0 +1,41 @@
+{
+	"name": "dfSinkOpsLcsNotifications",
+	"properties": {
+		"folder": {
+			"name": "Download"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "dsOpsLcsNotification",
+						"type": "DatasetReference"
+					},
+					"name": "OpsLcsNotification"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "dsOpsSourceFiles",
+						"type": "DatasetReference"
+					},
+					"name": "SinkToSourceFiles"
+				}
+			],
+			"transformations": [
+				{
+					"name": "Flatten"
+				},
+				{
+					"name": "AlterRow"
+				},
+				{
+					"name": "AddLocConfigurationId"
+				}
+			],
+			"script": "parameters{\n\tSourceId as string,\n\tLocConfigurationId as string\n}\nsource(output(\n\t\tevent_type as string,\n\t\tevent_time as string,\n\t\tevent_creator as string,\n\t\tfiles as (file_id as string, version as string, locale as string, source_id as string, type as string, status as string, is_content_changed as boolean, is_skeleton_changed as boolean, is_metadata_changed as boolean, is_loc_metadata_changed as boolean, is_reference_to_changed as boolean)[],\n\t\tEventProcessedUtcTime as string,\n\t\tPartitionId as integer,\n\t\tEventEnqueuedUtcTime as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tdocumentForm: 'documentPerLine',\n\twildcardPaths:[($SourceId)]) ~> OpsLcsNotification\nOpsLcsNotification foldDown(unroll(files, files),\n\tmapColumn(\n\t\tFileId = files.file_id,\n\t\tSourceId = files.source_id,\n\t\tVersion = files.version,\n\t\tLocale = files.locale,\n\t\tStatus = files.status,\n\t\tIsContentChanged = files.is_content_changed,\n\t\tIsMetadataChanged = files.is_metadata_changed,\n\t\tIsLocMetadataChanged = files.is_loc_metadata_changed,\n\t\tIsReferenceToChanged = files.is_reference_to_changed\n\t),\n\tskipDuplicateMapInputs: false,\n\tskipDuplicateMapOutputs: false) ~> Flatten\nAddLocConfigurationId alterRow(upsertIf(true())) ~> AlterRow\nFlatten derive(LocConfigurationId = $LocConfigurationId) ~> AddLocConfigurationId\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tSourceId as string,\n\t\tFIleId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tIsContentChanged as boolean,\n\t\tIsMetadataChanged as boolean,\n\t\tIsLocMetadataChanged as boolean\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['SourceId','FileId','Version'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> SinkToSourceFiles"
+		}
+	}
+}

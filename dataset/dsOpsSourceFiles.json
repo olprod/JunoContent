@@ -1,0 +1,49 @@
+{
+	"name": "dsOpsSourceFiles",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_OpsConnector",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Download"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "SourceId",
+				"type": "varchar"
+			},
+			{
+				"name": "FIleId",
+				"type": "varchar"
+			},
+			{
+				"name": "Version",
+				"type": "varchar"
+			},
+			{
+				"name": "Locale",
+				"type": "varchar"
+			},
+			{
+				"name": "IsContentChanged",
+				"type": "bit"
+			},
+			{
+				"name": "IsMetadataChanged",
+				"type": "bit"
+			},
+			{
+				"name": "IsLocMetadataChanged",
+				"type": "bit"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "SourceFiles"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

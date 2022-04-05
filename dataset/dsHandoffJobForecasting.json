@@ -1,0 +1,66 @@
+{
+	"name": "dsHandoffJobForecasting",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_Forecasting",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Forecasting"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "TenantId",
+				"type": "varchar"
+			},
+			{
+				"name": "LocConfigurationId",
+				"type": "varchar"
+			},
+			{
+				"name": "JobId",
+				"type": "varchar"
+			},
+			{
+				"name": "EstimatedWC",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "EstimatedAWC",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "Price",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "HTLocalesCount",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "EstimatedCost",
+				"type": "nchar"
+			},
+			{
+				"name": "RunningBudget",
+				"type": "float",
+				"precision": 15
+			},
+			{
+				"name": "IsOverBudget",
+				"type": "bit"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "HandoffJobForecasting"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

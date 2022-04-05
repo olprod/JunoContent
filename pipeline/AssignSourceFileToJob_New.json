@@ -1,0 +1,391 @@
+{
+	"name": "AssignSourceFileToJob_New",
+	"properties": {
+		"activities": [
+			{
+				"name": "AssignSourceFileToJob_New",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "LookupTenant",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "LookupHostContentStoreName",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "RefreshContentGroupAssignment",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "dfAssignSourceFileToJob_New",
+						"type": "DataFlowReference",
+						"parameters": {
+							"LocConfigurationId": {
+								"value": "'@{pipeline().parameters.LocConfigurationId}'",
+								"type": "Expression"
+							},
+							"JobId": {
+								"value": "'@{pipeline().parameters.JobId}'",
+								"type": "Expression"
+							},
+							"TenantName": {
+								"value": "'@{activity('LookupTenant').output.firstRow.Name}'",
+								"type": "Expression"
+							},
+							"HostContentStoreName": {
+								"value": "'@{activity('LookupHostContentStoreName').output.firstRow.Name}'",
+								"type": "Expression"
+							},
+							"TenantId": {
+								"value": "'@{activity('LookupTenant').output.firstRow.Id}'",
+								"type": "Expression"
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "LookupTenant",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select T.Name, T.Id from [dbo].[Branches] B\nleft join [dbo].[Tenant] T on B.TenantId = T.Id\nwhere B.Guid = '@{pipeline().parameters.LocConfigurationId}'\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "dsTenant",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "LookupHostContentStoreName",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select HCS.Name from [dbo].[Branches] as B\nleft join [dbo].[HostContentStore] as HCS on B.HostContentStoreId = HCS.Id and B.TenantId = HCS.TenantId\nwhere Guid = '@{pipeline().parameters.LocConfigurationId}'\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "dsHostContentStore",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Continue Handoff if Within Budget",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "AssignSourceFileToJob_New",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@bool(1)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "UpdateJobSummary",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "SetJobStateToCancelledByForecasting",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "UpdateJobState",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"LocConfigurationId": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"JobId": {
+										"value": "@pipeline().parameters.JobId",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "SetJobStateToCancelledByForecasting",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[UpdateJobState]",
+								"storedProcedureParameters": {
+									"jobId": {
+										"value": {
+											"value": "@pipeline().parameters.JobId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"locConfigurationId": {
+										"value": {
+											"value": "@pipeline().parameters.LocConfigurationId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"stateName": {
+										"value": {
+											"value": "CancelledByForecasting",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "Content_Handoff",
+								"type": "LinkedServiceReference"
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "UpdateJobStateSummary",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "UpdateJobStateToInProgress",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "UpdateJobState",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"LocConfigurationId": {
+										"value": "@pipeline().parameters.LocConfigurationId",
+										"type": "Expression"
+									},
+									"JobId": {
+										"value": "@pipeline().parameters.JobId",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "UpdateJobStateToInProgress",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[UpdateJobState]",
+								"storedProcedureParameters": {
+									"jobId": {
+										"value": {
+											"value": "@pipeline().parameters.JobId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"locConfigurationId": {
+										"value": {
+											"value": "@pipeline().parameters.LocConfigurationId",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"stateName": {
+										"value": "InProgress",
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "Content_Handoff",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "PublishSourceFileJobAssignmentBlob",
+							"type": "WebActivity",
+							"dependsOn": [
+								{
+									"activity": "UpdateJobStateSummary",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"url": "https://test",
+								"method": "POST",
+								"body": {
+									"value": "{\n\"LocConfigurationId\": \"@{pipeline().parameters.LocConfigurationId}\",\n\"JobId\": \"@{pipeline().parameters.JobId}\",\n\"JobAssignmentBlobName\": \"@{pipeline().parameters.LocConfigurationId}\\{pipeline().parameters.JobId}\"\n}",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "RefreshContentGroupAssignment",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[BulkUpdateContentGroupAssignments]",
+					"storedProcedureParameters": {
+						"LocConfigurationId": {
+							"value": {
+								"value": "@pipeline().parameters.LocConfigurationId",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "Content_Handoff",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"JobId": {
+				"type": "string"
+			},
+			"LocConfigurationId": {
+				"type": "string"
+			},
+			"IterationChunk": {
+				"type": "int",
+				"defaultValue": 2500
+			},
+			"EnableBudgetControl": {
+				"type": "bool",
+				"defaultValue": false
+			}
+		},
+		"variables": {
+			"IterationCount": {
+				"type": "String"
+			},
+			"IterationIndex": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"JobSourceFileCount": {
+				"type": "String"
+			},
+			"TempIterationIndex": {
+				"type": "String"
+			},
+			"ContinueIteration": {
+				"type": "Boolean"
+			}
+		},
+		"folder": {
+			"name": "FileIngestion"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-03-29T03:38:32Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

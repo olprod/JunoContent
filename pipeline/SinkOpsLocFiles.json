@@ -1,0 +1,190 @@
+{
+	"name": "SinkOpsLocFiles",
+	"properties": {
+		"activities": [
+			{
+				"name": "SinkOpsLocFiles",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"wildcardFolderPath": {
+								"value": "@pipeline().parameters.LocConfigurationId",
+								"type": "Expression"
+							},
+							"wildcardFileName": "*.json",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "upsert",
+						"upsertSettings": {
+							"useTempDB": true,
+							"keys": [
+								"TenantId",
+								"LocConfigurationId",
+								"TrackingId",
+								"Version",
+								"Locale",
+								"Revision"
+							]
+						},
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"path": "$['tenantId']"
+								},
+								"sink": {
+									"name": "TenantId",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['fileIdentifier']['locConfigurationId']"
+								},
+								"sink": {
+									"name": "LocConfigurationId",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['fileIdentifier']['trackingId']"
+								},
+								"sink": {
+									"name": "TrackingId",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['fileIdentifier']['version']"
+								},
+								"sink": {
+									"name": "Version",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['TranslationContext']['targetLocale']"
+								},
+								"sink": {
+									"name": "Locale",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['contentUri']"
+								},
+								"sink": {
+									"name": "ContentUrl",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['fileIdentifier']['contentType']['Name']"
+								},
+								"sink": {
+									"name": "ContentType",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['TranslationContext']['submissionId']"
+								},
+								"sink": {
+									"name": "SubmissionId",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['createdAt']"
+								},
+								"sink": {
+									"name": "UpdatedAt",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['TranslationContext']['translationFlavor']"
+								},
+								"sink": {
+									"name": "TranslationFlavor",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "$['TranslationContext']['translationRevision']"
+								},
+								"sink": {
+									"name": "Revision",
+									"type": "Int32"
+								}
+							}
+						],
+						"collectionReference": ""
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "dsOpsLocFilesContainer",
+						"type": "DatasetReference",
+						"parameters": {
+							"LocConfigurationId": {
+								"value": "@pipeline().parameters.LocConfigurationId",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "dsOpsLocFiles",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"parameters": {
+			"LocConfigurationId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Handback"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-02-06T06:45:36Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

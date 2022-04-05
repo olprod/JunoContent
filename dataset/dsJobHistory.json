@@ -1,0 +1,63 @@
+{
+	"name": "dsJobHistory",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_Handoff",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "Handoff"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "LocConfigurationId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "JobId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "CreatedAt",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "Type",
+				"type": "nvarchar"
+			},
+			{
+				"name": "StateId",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "CreatedBy",
+				"type": "nvarchar"
+			},
+			{
+				"name": "TotalFileCount",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "SubmittedFileCount",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "FailedFileCount",
+				"type": "int",
+				"precision": 10
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "JobHistory"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

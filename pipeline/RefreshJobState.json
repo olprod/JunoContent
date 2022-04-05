@@ -1,0 +1,83 @@
+{
+	"name": "RefreshJobState",
+	"properties": {
+		"activities": [
+			{
+				"name": "LookupInProgressJobs",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT * FROM [JobHistory]\nWHERE [StateId] = 2\nAND [CreatedAt] > DATEADD(Day,-2, GETDATE())",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "dsJobHistory",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach Job",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LookupInProgressJobs",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupInProgressJobs').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Update Job State",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "UpdateJobState",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"LocConfigurationId": {
+										"value": "@item().LocConfigurationId",
+										"type": "Expression"
+									},
+									"JobId": {
+										"value": "@item().JobId",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"folder": {
+			"name": "FileIngestion"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-01-17T03:49:44Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,95 @@
+{
+	"name": "SinkOpsLcsNotifications",
+	"properties": {
+		"activities": [
+			{
+				"name": "dfSinkOpsLcsNotifications",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [
+					{
+						"activity": "LookupLocConfigurationId",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "dfSinkOpsLcsNotifications",
+						"type": "DataFlowReference",
+						"parameters": {
+							"SourceId": {
+								"value": "'@{pipeline().parameters.SourceId}'",
+								"type": "Expression"
+							},
+							"LocConfigurationId": {
+								"value": "'@{activity('LookupLocConfigurationId').output.firstRow.LocConfigurationId}'",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"OpsLcsNotification": {
+								"SourceId": {
+									"value": "@pipeline().parameters.SourceId",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			},
+			{
+				"name": "LookupLocConfigurationId",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select LocConfigurationId from SourceStoreSnapshot\nwhere SourceId = '@{pipeline().parameters.SourceId}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "dsOpsSourceStore",
+						"type": "DatasetReference"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"SourceId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Download"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-02-15T07:55:46Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

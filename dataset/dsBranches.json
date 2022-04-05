@@ -1,0 +1,72 @@
+{
+	"name": "dsBranches",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_LocConfig",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "LocConfiguration"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "Guid",
+				"type": "uniqueidentifier"
+			},
+			{
+				"name": "Id",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "Name",
+				"type": "nvarchar"
+			},
+			{
+				"name": "IsInActive",
+				"type": "bit"
+			},
+			{
+				"name": "IsDeleted",
+				"type": "bit"
+			},
+			{
+				"name": "DataStoreId",
+				"type": "uniqueidentifier"
+			},
+			{
+				"name": "LocSystemId",
+				"type": "uniqueidentifier"
+			},
+			{
+				"name": "PublishSystemId",
+				"type": "uniqueidentifier"
+			},
+			{
+				"name": "Version",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "TenantId",
+				"type": "uniqueidentifier"
+			},
+			{
+				"name": "HostContentStoreId",
+				"type": "uniqueidentifier"
+			},
+			{
+				"name": "NumberOfLocales",
+				"type": "int",
+				"precision": 10
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Branches"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

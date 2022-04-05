@@ -1,0 +1,80 @@
+{
+	"name": "dfAssignSourceFileToJob_New",
+	"properties": {
+		"folder": {
+			"name": "Handoff"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "dsSourceFileContentGroupSummary",
+						"type": "DatasetReference"
+					},
+					"name": "SourceFile"
+				},
+				{
+					"dataset": {
+						"referenceName": "dsContentGroupSnapshot",
+						"type": "DatasetReference"
+					},
+					"name": "ContentGroup"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "dsJobAssignment",
+						"type": "DatasetReference"
+					},
+					"name": "SinkToJobAssignment"
+				},
+				{
+					"dataset": {
+						"referenceName": "dsSourceFileHistory",
+						"type": "DatasetReference"
+					},
+					"name": "SinkToSourceFileHistory"
+				},
+				{
+					"dataset": {
+						"referenceName": "dsSourceFileJobAssignmentBlobContainer",
+						"type": "DatasetReference"
+					},
+					"name": "SinkToJobAssignmentBlob"
+				}
+			],
+			"transformations": [
+				{
+					"name": "JoinContentGroup"
+				},
+				{
+					"name": "SelectJobAssignmentColumns"
+				},
+				{
+					"name": "DerivedJobId"
+				},
+				{
+					"name": "AlterRow"
+				},
+				{
+					"name": "SelectStateColumns"
+				},
+				{
+					"name": "DerivedStateId"
+				},
+				{
+					"name": "AlterRow1"
+				},
+				{
+					"name": "SelectColumns"
+				},
+				{
+					"name": "derivedTenantId"
+				}
+			],
+			"script": "parameters{\n\tLocConfigurationId as string,\n\tJobId as string,\n\tTenantName as string,\n\tHostContentStoreName as string,\n\tTenantId as string\n}\nsource(output(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tTenantId as string,\n\t\tTrackingId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tContentType as string,\n\t\tStateId as integer,\n\t\tContentUrl as string,\n\t\tFilePath as string,\n\t\tLocTopic as string,\n\t\tLocPriority as string,\n\t\tCommitId as string,\n\t\tIsContentChanged as boolean,\n\t\tIsContentGroupLocMetadataChanged as boolean,\n\t\tIsLocMetadataChanged as boolean,\n\t\tIsSkeletonChanged as boolean,\n\t\tIsDeleted as boolean,\n\t\tIsLatest as boolean,\n\t\tRevision as integer,\n\t\tSubStateId as integer,\n\t\tContentGroupName as string\n\t),\n\tallowSchemaDrift: false,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: (\"select * from SourceFileContentGroupSummary where LocConfigurationId = '{$LocConfigurationId}' and StateId in (1, 2, 6) and ContentGroupName IS NOT NULL\"),\n\tformat: 'query') ~> SourceFile\nsource(output(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tName as string,\n\t\tDefaultTreatmentPreference as string,\n\t\tQuery as string,\n\t\tVersion as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: (\"select * from ContentGroupSnapshot where LocConfigurationId = '{$LocConfigurationId}'\"),\n\tformat: 'query') ~> ContentGroup\nSourceFile, ContentGroup join(SourceFile@LocConfigurationId == ContentGroup@LocConfigurationId\n\t&& ContentGroupName == Name,\n\tjoinType:'inner',\n\tbroadcast: 'auto')~> JoinContentGroup\nJoinContentGroup select(mapColumn(\n\t\tSourceFileId = SourceFile@Id,\n\t\tLocConfigurationId = SourceFile@LocConfigurationId,\n\t\tTenantId,\n\t\tFileTrackingId = TrackingId,\n\t\tVersion = SourceFile@Version,\n\t\tContentGroupName,\n\t\tDefaultTreatmentPreference\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectJobAssignmentColumns\nSelectJobAssignmentColumns derive(JobId = $JobId,\n\t\tTenantName = $TenantName,\n\t\tHostContentStoreName = $HostContentStoreName,\n\t\tTimestamp = currentUTC(),\n\t\tTenantId = $TenantId) ~> DerivedJobId\nDerivedJobId alterRow(upsertIf(true())) ~> AlterRow\nJoinContentGroup select(mapColumn(\n\t\tLocConfigurationId = SourceFile@LocConfigurationId,\n\t\tTrackingId,\n\t\tVersion = SourceFile@Version,\n\t\tStateId\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectStateColumns\nSelectStateColumns derive(StateId = 2) ~> DerivedStateId\nDerivedStateId alterRow(upsertIf(true())) ~> AlterRow1\nderivedTenantId select(mapColumn(\n\t\tLocConfigurationId = SourceFile@LocConfigurationId,\n\t\tTenantId,\n\t\tTrackingId,\n\t\tVersion = SourceFile@Version,\n\t\tLocale,\n\t\tContentType,\n\t\tContentUrl,\n\t\tFilePath,\n\t\tLocTopic,\n\t\tLocPriority,\n\t\tCommitId,\n\t\tIsContentChanged,\n\t\tIsLocMetadataChanged,\n\t\tIsSkeletonChanged,\n\t\tRevision,\n\t\tContentGroupName,\n\t\tDefaultTreatmentPreference,\n\t\tIsContentGroupLocMetadataChanged\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectColumns\nJoinContentGroup derive(TenantId = $TenantId) ~> derivedTenantId\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tSourceFileId as integer,\n\t\tLocConfigurationId as string,\n\t\tFileTrackingId as string,\n\t\tVersion as string,\n\t\tJobId as string,\n\t\tTenantName as string,\n\t\tHostContentStoreName as string,\n\t\tContentGroupName as string,\n\t\tDefaultTreatmentPreference as string,\n\t\tTimestamp as timestamp\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','FileTrackingId','Version','JobId'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> SinkToJobAssignment\nAlterRow1 sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tinput(\n\t\tId as integer,\n\t\tLocConfigurationId as string,\n\t\tTenantId as string,\n\t\tTrackingId as string,\n\t\tVersion as string,\n\t\tLocale as string,\n\t\tContentType as string,\n\t\tStateId as integer,\n\t\tContentUrl as string,\n\t\tFilePath as string,\n\t\tLocTopic as string,\n\t\tLocPriority as string,\n\t\tCommitId as string,\n\t\tIsContentChanged as boolean,\n\t\tIsContentGroupLocMetadataChanged as boolean,\n\t\tIsLocMetadataChanged as boolean,\n\t\tIsSkeletonChanged as boolean,\n\t\tIsDeleted as boolean,\n\t\tIsLatest as boolean,\n\t\tRevision as integer,\n\t\tSubStateId as integer\n\t),\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:true,\n\tkeys:['LocConfigurationId','TrackingId','Version'],\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError',\n\tmapColumn(\n\t\tLocConfigurationId,\n\t\tTrackingId,\n\t\tVersion,\n\t\tStateId\n\t)) ~> SinkToSourceFileHistory\nSelectColumns sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tpartitionFileNames:[(concat($JobId, '.json'))],\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\tpartitionBy('hash', 1)) ~> SinkToJobAssignmentBlob"
+		}
+	}
+}

@@ -1,0 +1,12 @@
+{
+	"name": "Content_LocConfig",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "Linked Service for Content_LocConfig SQL Database \njuno-c-sql-r2-int.database.windows.net. ",
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"connectionString": "Data Source=tcp:juno-c-sql-prod.database.windows.net;Initial Catalog=Content_LocConfig;Persist Security Info=False;MultipleActiveResultSets=True;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+		}
+	}
+}

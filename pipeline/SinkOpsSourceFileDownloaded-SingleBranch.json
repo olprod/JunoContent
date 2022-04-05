@@ -1,0 +1,56 @@
+{
+	"name": "SinkOpsSourceFileDownloaded-SingleBranch",
+	"properties": {
+		"activities": [
+			{
+				"name": "dfSinkOpsSourceFileDownloaded",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "dfSinkOpsSourceFileDownloaded",
+						"type": "DataFlowReference",
+						"parameters": {
+							"LocConfigurationId": {
+								"value": "'@{pipeline().parameters.LocConfigurationId}'",
+								"type": "Expression"
+							}
+						},
+						"datasetParameters": {
+							"OpsSourceFileDownloaded": {
+								"LocConfigurationId": {
+									"value": "@pipeline().parameters.LocConfigurationId",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine"
+				}
+			}
+		],
+		"parameters": {
+			"LocConfigurationId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Download"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-03-02T08:27:12Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

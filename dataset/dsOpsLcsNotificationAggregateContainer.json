@@ -1,0 +1,38 @@
+{
+	"name": "dsOpsLcsNotificationAggregateContainer",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_OpsConnector_LCS",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"SourceId": {
+				"type": "string"
+			},
+			"AggregateName": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Download"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": {
+					"value": "@dataset().AggregateName",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().SourceId",
+					"type": "Expression"
+				},
+				"container": "ops-lcs-notification-aggregate"
+			}
+		},
+		"schema": {}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

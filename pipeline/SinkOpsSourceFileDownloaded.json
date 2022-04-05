@@ -1,0 +1,99 @@
+{
+	"name": "SinkOpsSourceFileDownloaded",
+	"properties": {
+		"activities": [
+			{
+				"name": "LookupLocConfigurations",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select Guid from Branches where IsDeleted = 0",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "dsBranches",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach LocConfiguration",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LookupLocConfigurations",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupLocConfigurations').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "dfSinkOpsSourceFileDownloaded",
+							"type": "ExecuteDataFlow",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "1.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataflow": {
+									"referenceName": "dfSinkOpsSourceFileDownloaded",
+									"type": "DataFlowReference",
+									"parameters": {
+										"LocConfigurationId": {
+											"value": "'@{item().Guid}'",
+											"type": "Expression"
+										}
+									},
+									"datasetParameters": {
+										"OpsSourceFileDownloaded": {
+											"LocConfigurationId": {
+												"value": "@item().Guid",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								"compute": {
+									"coreCount": 8,
+									"computeType": "General"
+								},
+								"traceLevel": "Fine"
+							}
+						}
+					]
+				}
+			}
+		],
+		"folder": {
+			"name": "Download"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-02-23T11:06:26Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

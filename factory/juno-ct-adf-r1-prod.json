@@ -1,0 +1,25 @@
+{
+	"name": "juno-ct-adf-r1-prod",
+	"properties": {
+		"globalParameters": {
+			"updateJobStateEventPublisherUrl": {
+				"type": "string",
+				"value": "https://prod-26.westus2.logic.azure.com:443/workflows/84cf7b19747046e8b573c408732542a3/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=dgd0EvsPLfNPZl1uCyFqYz7xINMxT5q5nvNeew7lb4c"
+			},
+			"financeForecastingApiUrl": {
+				"type": "string",
+				"value": "https://juno-ct-financeforecasting-fn-r1-prod.azurewebsites.net/api/canwithdraw?code=P6QCWIOJRyLhfK24GQCob7dil/xATaeh17/p2nLnYxkUIf24oqGThg==&clientId=default"
+			},
+			"sourceFileReadyForHandoffEventPublisherUrl": {
+				"type": "string",
+				"value": "https://prod-30.westus2.logic.azure.com:443/workflows/012532ef9a5f4574adaae816fd727b15/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=A7CsAYrXCZK764FetsaxnZn_J0gbw-booKmvzShZfOE"
+			}
+		}
+	},
+	"location": "westus2",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "53d024fc-de35-485a-8638-4616b70bd4cb",
+		"tenantId": "975f013f-7f24-47e8-a7d3-abc4752bf346"
+	}
+}

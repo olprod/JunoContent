@@ -1,0 +1,101 @@
+{
+	"name": "MergeLocFiles",
+	"properties": {
+		"activities": [
+			{
+				"name": "AggregateLocFiles",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [
+					{
+						"name": "Source",
+						"value": "ops-loc-files/@{pipeline().parameters.LocConfigurationId}/"
+					},
+					{
+						"name": "Destination",
+						"value": "ops-loc-file-aggregate/@{pipeline().parameters.LocConfigurationId}/@{concat(pipeline().parameters.JobId, '.json')}"
+					}
+				],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"wildcardFolderPath": {
+								"value": "@pipeline().parameters.LocConfigurationId",
+								"type": "Expression"
+							},
+							"wildcardFileName": "*.json",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings",
+							"copyBehavior": "MergeFiles"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings",
+							"filePattern": "arrayOfObjects"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "dsOpsLocFilesContainer",
+						"type": "DatasetReference",
+						"parameters": {
+							"LocConfigurationId": {
+								"value": "@pipeline().parameters.LocConfigurationId",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "dsLocFileAggregate",
+						"type": "DatasetReference",
+						"parameters": {
+							"LocConfigurationId": {
+								"value": "@pipeline().parameters.LocConfigurationId",
+								"type": "Expression"
+							},
+							"JobId": {
+								"value": "@pipeline().parameters.JobId",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"LocConfigurationId": {
+				"type": "string"
+			},
+			"JobId": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Handback"
+		},
+		"annotations": [],
+		"lastPublishTime": "2022-02-07T01:55:52Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

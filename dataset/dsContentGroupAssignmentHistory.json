@@ -1,0 +1,43 @@
+{
+	"name": "dsContentGroupAssignmentHistory",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "Content_Handoff",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "ContentGroup"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "LocConfigurationId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "FileTrackingId",
+				"type": "nvarchar"
+			},
+			{
+				"name": "ContentGroupName",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Version",
+				"type": "datetime",
+				"precision": 23,
+				"scale": 3
+			},
+			{
+				"name": "IsDeleted",
+				"type": "bit"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "ContentGroupAssignmentHistory"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
